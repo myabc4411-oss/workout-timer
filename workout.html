@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workout Timer PRO</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #00e5a0;
+    --accent2: #ffcc00;
+    --accent-rest: #4dabf7;
+    --accent-stretch: #ff6b6b;
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --text-dim: #555;
+    --danger: #ff4757;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 40px;
+  }
+
+  /* HEADER */
+  header {
+    width: 100%;
+    background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+
+  header h1 span {
+    color: var(--accent);
+  }
+
+  /* MAIN CONTAINER */
+  .container {
+    width: 100%;
+    max-width: 480px;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* FORM FIELDS */
+  .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+
+  .field input[type="text"],
+  .field input[type="number"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .field input:focus {
+    border-color: var(--accent);
+  }
+
+  .field.full { grid-column: 1 / -1; }
+
+  /* ROUTINE NAME */
+  .routine-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--accent);
+    padding: 4px 0;
+  }
+
+  /* PHASE INDICATOR */
+  .phase-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .phase-seg {
+    height: 4px;
+    border-radius: 2px;
+    flex: 1;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+
+  .phase-seg.warmup { --c: var(--accent); }
+  .phase-seg.exercise { --c: var(--accent2); }
+  .phase-seg.rest { --c: var(--accent-rest); }
+  .phase-seg.stretch { --c: var(--accent-stretch); }
+  .phase-seg.active { background: var(--c); }
+
+  /* PHASE LABEL */
+  .phase-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 3px;
+    margin-bottom: 4px;
+    transition: color 0.3s;
+  }
+
+  .phase-warmup { color: var(--accent); }
+  .phase-exercise { color: var(--accent2); }
+  .phase-rest { color: var(--accent-rest); }
+  .phase-stretch { color: var(--accent-stretch); }
+  .phase-done { color: var(--text-muted); }
+
+  /* TIMER DISPLAY */
+  .timer-wrap {
+    text-align: center;
+    padding: 8px 0;
+    position: relative;
+  }
+
+  .timer-display {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 80px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -2px;
+    transition: color 0.3s;
+  }
+
+  .timer-warmup { color: var(--accent); }
+  .timer-exercise { color: var(--accent2); }
+  .timer-rest { color: var(--accent-rest); }
+  .timer-stretch { color: var(--accent-stretch); }
+  .timer-done { color: var(--text-muted); }
+
+  .timer-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  /* SET INFO */
+  .set-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .set-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .set-progress {
+    width: 120px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .set-progress-fill {
+    height: 100%;
+    background: var(--accent2);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  /* NEXT PHASE */
+  .next-phase {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  /* CONTROLS */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .btn {
+    border-radius: 10px;
+    border: none;
+    padding: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+    outline: none;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #00d490; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { background: #252525; border-color: #444; }
+
+  .btn-danger {
+    background: rgba(255, 71, 87, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+  }
+
+  .btn-danger:hover { background: rgba(255, 71, 87, 0.25); }
+
+  .btn-accent2 {
+    background: var(--accent2);
+    color: #000;
+  }
+
+  .btn-accent2:hover { background: #f0c000; }
+
+  .btn.full { grid-column: 1 / -1; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ROUTINE SLOTS */
+  .routine-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .routine-slot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .routine-slot:hover { border-color: var(--accent); }
+
+  .slot-name {
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .slot-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .slot-delete {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 4px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+
+  .slot-delete:hover { color: var(--danger); }
+
+  .empty-msg {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 12px;
+  }
+
+  /* TOTAL TIME */
+  .total-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .total-info span { color: var(--text); font-weight: 500; }
+
+  /* COMPLETION */
+  .completion-card {
+    text-align: center;
+    padding: 30px 20px;
+  }
+
+  .completion-emoji { font-size: 48px; margin-bottom: 12px; }
+  .completion-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .completion-sub { font-size: 14px; color: var(--text-muted); }
+
+  /* PULSE ANIMATION */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .pulsing { animation: pulse 1s ease-in-out infinite; }
+
+  /* SECTION DIVIDER */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 4px 0;
+  }
+  .section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">💪</div>
+  <h1>Workout Timer <span>PRO</span></h1>
+</header>
+
+<div class="container">
+
+  <!-- ROUTINE SETTINGS -->
+  <div class="card" id="settings-card">
+    <div class="card-title">루틴 설정</div>
+    <div class="field-group">
+      <div class="field full">
+        <label>루틴 이름</label>
+        <input type="text" id="routineName" value="풀업 딥스 푸쉬업 스쿼트" placeholder="루틴 이름 입력">
+      </div>
+      <div class="field">
+        <label>준비운동 (초)</label>
+        <input type="number" id="warmup" value="10" min="0">
+      </div>
+      <div class="field">
+        <label>운동 시간 (초)</label>
+        <input type="number" id="exercise" value="90" min="1">
+      </div>
+      <div class="field">
+        <label>휴식 시간 (초)</label>
+        <input type="number" id="rest" value="120" min="0">
+      </div>
+      <div class="field">
+        <label>세트 수</label>
+        <input type="number" id="sets" value="10" min="1" max="99">
+      </div>
+      <div class="field full">
+        <label>스트레칭 (초)</label>
+        <input type="number" id="stretch" value="300" min="0">
+      </div>
+    </div>
+
+    <div class="total-info" id="totalInfo">
+      <span>총 예상 시간</span>
+      <span id="totalTime">--</span>
+    </div>
+  </div>
+
+  <!-- TIMER DISPLAY -->
+  <div class="card" id="timer-card">
+    <div class="phase-bar">
+      <div class="phase-seg warmup" id="seg-warmup"></div>
+      <div class="phase-seg exercise" id="seg-exercise"></div>
+      <div class="phase-seg rest" id="seg-rest"></div>
+      <div class="phase-seg stretch" id="seg-stretch"></div>
+    </div>
+
+    <div class="phase-label phase-exercise" id="phaseLabel">운동 준비</div>
+
+    <div class="timer-wrap">
+      <div class="timer-display timer-exercise" id="timerDisplay">00:00</div>
+    </div>
+
+    <div class="set-info" id="setInfo">
+      <div class="set-badge" id="setBadge">대기 중</div>
+      <div class="set-progress">
+        <div class="set-progress-fill" id="setProgressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="next-phase" id="nextPhase">시작 버튼을 눌러 운동을 시작하세요</div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="btn btn-primary" id="btnStart" onclick="startTimer()">▶ 시작</button>
+    <button class="btn btn-secondary" id="btnPause" onclick="pauseTimer()" disabled>⏸ 일시정지</button>
+    <button class="btn btn-secondary" id="btnResume" onclick="resumeTimer()" disabled>▶ 재시작</button>
+    <button class="btn btn-danger" id="btnStop" onclick="stopTimer()" disabled>■ 정지</button>
+  </div>
+
+  <!-- SAVE / LOAD -->
+  <div class="section-divider">루틴 저장 / 불러오기</div>
+
+  <div class="controls">
+    <button class="btn btn-secondary" onclick="saveRoutine()">💾 루틴 저장</button>
+    <button class="btn btn-secondary" onclick="toggleRoutineList()">📂 불러오기</button>
+  </div>
+
+  <div id="routineListWrap" style="display:none">
+    <div class="card" style="margin-top:0">
+      <div class="card-title">저장된 루틴</div>
+      <div class="routine-slots" id="routineList"></div>
+    </div>
+  </div>
+
+</div>
+
+<audio id="beepSound" preload="auto"></audio>
+
+<script>
+// === STATE ===
+let timer = null;
+let remaining = 0;
+let currentPhase = null; // 'warmup' | 'exercise' | 'rest' | 'stretch' | 'done'
+let currentSet = 1;
+let isPaused = false;
+let totalSets = 1;
+
+// === SETTINGS HELPERS ===
+const getVal = id => parseInt(document.getElementById(id).value) || 0;
+const getStr = id => document.getElementById(id).value.trim();
+
+function calcTotal() {
+  const w = getVal('warmup');
+  const e = getVal('exercise');
+  const r = getVal('rest');
+  const s = getVal('sets');
+  const st = getVal('stretch');
+  const total = w + (e + r) * s - r + st;
+  document.getElementById('totalTime').textContent = formatTime(Math.max(0, total));
+}
+
+['warmup','exercise','rest','sets','stretch'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcTotal);
+});
+
+calcTotal();
+
+// === FORMAT ===
+function formatTime(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// === PHASE CONFIG ===
+const phaseNames = {
+  warmup: '준비운동',
+  exercise: '운동',
+  rest: '휴식',
+  stretch: '스트레칭',
+  done: '완료!'
+};
+
+function setPhaseUI(phase, timeLeft, set, totalSet) {
+  const label = document.getElementById('phaseLabel');
+  const display = document.getElementById('timerDisplay');
+  const badge = document.getElementById('setBadge');
+  const nextEl = document.getElementById('nextPhase');
+  const fill = document.getElementById('setProgressFill');
+
+  // Remove all classes
+  ['warmup','exercise','rest','stretch','done'].forEach(p => {
+    label.classList.remove('phase-'+p);
+    display.classList.remove('timer-'+p);
+  });
+
+  label.classList.add('phase-'+phase);
+  display.classList.add('timer-'+phase);
+  label.textContent = phaseNames[phase] || '';
+  display.textContent = formatTime(timeLeft);
+
+  // Phase bar
+  const segs = ['warmup','exercise','rest','stretch'];
+  segs.forEach(s => {
+    const el = document.getElementById('seg-'+s);
+    el.classList.toggle('active', s === phase);
+  });
+
+  if (phase === 'done') {
+    badge.textContent = '완료 🎉';
+    nextEl.textContent = '수고하셨습니다!';
+    fill.style.width = '100%';
+  } else if (phase === 'warmup') {
+    badge.textContent = '워밍업';
+    nextEl.textContent = `다음: 운동 (${formatTime(getVal('exercise'))})`;
+    fill.style.width = '0%';
+  } else if (phase === 'exercise') {
+    badge.textContent = `${set} / ${totalSet} 세트`;
+    const nextPhase = set >= totalSet ? '스트레칭' : '휴식';
+    const nextTime = set >= totalSet ? formatTime(getVal('stretch')) : formatTime(getVal('rest'));
+    nextEl.textContent = `다음: ${nextPhase} (${nextTime})`;
+    fill.style.width = `${(set / totalSet) * 100}%`;
+  } else if (phase === 'rest') {
+    badge.textContent = `${set} / ${totalSet} 세트 휴식`;
+    nextEl.textContent = `다음: 운동 (${formatTime(getVal('exercise'))})`;
+    fill.style.width = `${(set / totalSet) * 100}%`;
+  } else if (phase === 'stretch') {
+    badge.textContent = '스트레칭';
+    nextEl.textContent = '마무리 중...';
+    fill.style.width = '100%';
+  }
+}
+
+// === BEEP ===
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function beep(freq = 880, dur = 0.1, vol = 0.3) {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+
+function beepPhaseChange() {
+  beep(660, 0.15, 0.4);
+  setTimeout(() => beep(880, 0.2, 0.4), 180);
+}
+
+function beepCountdown() {
+  beep(440, 0.08, 0.2);
+}
+
+function beepDone() {
+  [0, 200, 400].forEach(d => setTimeout(() => beep(880, 0.15, 0.5), d));
+  setTimeout(() => beep(1100, 0.4, 0.5), 700);
+}
+
+// === TIMER LOGIC ===
+let phaseQueue = [];
+let queueIndex = 0;
+
+function buildQueue() {
+  const w = getVal('warmup');
+  const e = getVal('exercise');
+  const r = getVal('rest');
+  const s = getVal('sets');
+  const st = getVal('stretch');
+  totalSets = s;
+
+  const q = [];
+  if (w > 0) q.push({ phase: 'warmup', duration: w, set: 0 });
+  for (let i = 1; i <= s; i++) {
+    q.push({ phase: 'exercise', duration: e, set: i });
+    if (i < s && r > 0) q.push({ phase: 'rest', duration: r, set: i });
+  }
+  if (st > 0) q.push({ phase: 'stretch', duration: st, set: 0 });
+  return q;
+}
+
+function startTimer() {
+  phaseQueue = buildQueue();
+  queueIndex = 0;
+  currentSet = 1;
+
+  if (phaseQueue.length === 0) return;
+
+  btnState(true);
+  runPhase(phaseQueue[0]);
+}
+
+function runPhase(item) {
+  if (!item) { endWorkout(); return; }
+  currentPhase = item.phase;
+  currentSet = item.set;
+  remaining = item.duration;
+
+  beepPhaseChange();
+  setPhaseUI(item.phase, remaining, item.set, totalSets);
+  clearInterval(timer);
+
+  timer = setInterval(() => {
+    if (isPaused) return;
+    remaining--;
+
+    if (remaining <= 3 && remaining > 0) beepCountdown();
+
+    setPhaseUI(item.phase, remaining, item.set, totalSets);
+
+    if (remaining <= 0) {
+      clearInterval(timer);
+      queueIndex++;
+      if (queueIndex < phaseQueue.length) {
+        runPhase(phaseQueue[queueIndex]);
+      } else {
+        endWorkout();
+      }
+    }
+  }, 1000);
+}
+
+function endWorkout() {
+  clearInterval(timer);
+  currentPhase = 'done';
+  beepDone();
+  setPhaseUI('done', 0, totalSets, totalSets);
+  document.getElementById('timerDisplay').textContent = '완료!';
+  btnState(false);
+  document.getElementById('btnStart').textContent = '▶ 다시 시작';
+  document.getElementById('btnStart').disabled = false;
+}
+
+function pauseTimer() {
+  isPaused = true;
+  document.getElementById('btnPause').disabled = true;
+  document.getElementById('btnResume').disabled = false;
+  document.getElementById('phaseLabel').classList.add('pulsing');
+}
+
+function resumeTimer() {
+  isPaused = false;
+  document.getElementById('btnPause').disabled = false;
+  document.getElementById('btnResume').disabled = true;
+  document.getElementById('phaseLabel').classList.remove('pulsing');
+}
+
+function stopTimer() {
+  clearInterval(timer);
+  isPaused = false;
+  currentPhase = null;
+  document.getElementById('phaseLabel').classList.remove('pulsing');
+  btnState(false);
+  document.getElementById('btnStart').textContent = '▶ 시작';
+  document.getElementById('btnStart').disabled = false;
+  setPhaseUI('exercise', 0, 0, 0);
+  document.getElementById('phaseLabel').textContent = '정지됨';
+  document.getElementById('timerDisplay').textContent = '00:00';
+  document.getElementById('nextPhase').textContent = '시작 버튼을 눌러 운동을 시작하세요';
+  document.getElementById('setBadge').textContent = '대기 중';
+  ['warmup','exercise','rest','stretch'].forEach(s => {
+    document.getElementById('seg-'+s).classList.remove('active');
+  });
+}
+
+function btnState(running) {
+  document.getElementById('btnStart').disabled = running;
+  document.getElementById('btnPause').disabled = !running;
+  document.getElementById('btnResume').disabled = true;
+  document.getElementById('btnStop').disabled = !running;
+}
+
+// === SAVE / LOAD ROUTINES ===
+function getSavedRoutines() {
+  try { return JSON.parse(localStorage.getItem('wt_routines') || '[]'); } catch { return []; }
+}
+
+function saveRoutine() {
+  const routines = getSavedRoutines();
+  const name = getStr('routineName') || '루틴 ' + (routines.length + 1);
+  const data = {
+    name,
+    warmup: getVal('warmup'),
+    exercise: getVal('exercise'),
+    rest: getVal('rest'),
+    sets: getVal('sets'),
+    stretch: getVal('stretch'),
+    savedAt: Date.now()
+  };
+  routines.unshift(data);
+  if (routines.length > 20) routines.length = 20;
+  localStorage.setItem('wt_routines', JSON.stringify(routines));
+  renderRoutineList();
+  alert(`"${name}" 루틴이 저장되었습니다!`);
+}
+
+function loadRoutine(idx) {
+  const routines = getSavedRoutines();
+  const r = routines[idx];
+  if (!r) return;
+  document.getElementById('routineName').value = r.name;
+  document.getElementById('warmup').value = r.warmup;
+  document.getElementById('exercise').value = r.exercise;
+  document.getElementById('rest').value = r.rest;
+  document.getElementById('sets').value = r.sets;
+  document.getElementById('stretch').value = r.stretch;
+  calcTotal();
+  toggleRoutineList();
+}
+
+function deleteRoutine(idx) {
+  const routines = getSavedRoutines();
+  routines.splice(idx, 1);
+  localStorage.setItem('wt_routines', JSON.stringify(routines));
+  renderRoutineList();
+}
+
+function renderRoutineList() {
+  const routines = getSavedRoutines();
+  const el = document.getElementById('routineList');
+  if (routines.length === 0) {
+    el.innerHTML = '<div class="empty-msg">저장된 루틴이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = routines.map((r, i) => {
+    const total = r.warmup + (r.exercise + r.rest) * r.sets - r.rest + r.stretch;
+    return `<div class="routine-slot" onclick="loadRoutine(${i})">
+      <div class="slot-name">${r.name}</div>
+      <div class="slot-meta">${r.sets}세트 · ${formatTime(Math.max(0,total))}</div>
+      <button class="slot-delete" onclick="event.stopPropagation();deleteRoutine(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleRoutineList() {
+  const wrap = document.getElementById('routineListWrap');
+  const isHidden = wrap.style.display === 'none';
+  wrap.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) renderRoutineList();
+}
+
+// Init
+calcTotal();
+</script>
+</body>
+</html>
