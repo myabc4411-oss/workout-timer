@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260813-2'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260813-3'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -134,6 +134,119 @@
   }
 
   header h1 span {
+    color: var(--accent);
+  }
+
+  .help-btn {
+    margin-left: auto;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .help-btn:hover, .help-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  /* HELP MODAL */
+  .help-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    padding: 20px 16px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .help-overlay.show { display: flex; justify-content: center; align-items: flex-start; }
+
+  .help-box {
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin: auto 0;
+  }
+
+  .help-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .help-box-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 1px;
+    color: var(--accent);
+  }
+
+  .help-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .help-section {
+    margin-bottom: 18px;
+  }
+  .help-section:last-child { margin-bottom: 0; }
+
+  .help-section h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: 0.3px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .help-section p, .help-section li {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .help-section ul, .help-section ol {
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .help-section .muted {
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+
+  .help-kbd {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 12px;
+    font-family: 'Roboto Mono', monospace;
     color: var(--accent);
   }
 
@@ -641,6 +754,7 @@
 <header>
   <div class="logo-icon">💪</div>
   <h1>Workout Timer <span>PRO</span></h1>
+  <button class="help-btn" id="btnHelp" onclick="openHelp()" aria-label="사용법 보기">?</button>
 </header>
 
 <div class="container">
@@ -774,6 +888,64 @@
     </div>
   </div>
 
+</div>
+
+<!-- HELP / 사용법 -->
+<div class="help-overlay" id="helpOverlay" onclick="closeHelpOnOverlay(event)">
+  <div class="help-box">
+    <div class="help-box-header">
+      <h2>사용법</h2>
+      <button class="help-close" onclick="closeHelp()" aria-label="닫기">✕</button>
+    </div>
+
+    <div class="help-section">
+      <h3>💪 이 앱은 무엇인가요?</h3>
+      <p>준비운동 → 운동 → 휴식을 정해진 세트 수만큼 반복하고, 마지막에 스트레칭까지 안내해주는 인터벌 운동 타이머예요. 세트마다 운동 종목별 무게·횟수와 메모를 남길 수 있어서, 운동 기록도 함께 관리할 수 있어요.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>1. 루틴 설정하기</h3>
+      <ul>
+        <li><b>루틴 이름</b> — 저장할 때 구분할 수 있는 이름이에요.</li>
+        <li><b>운동 종목 (쉼표로 구분)</b> — 한 세트 안에서 수행하는 종목들을 "풀업, 딥스, 푸쉬업, 스쿼트"처럼 쉼표로 나눠 입력하세요. 휴식 시간에 이 종목별로 기록칸이 자동으로 생겨요.</li>
+        <li><b>준비운동 / 운동 시간 / 휴식 시간 / 세트 수 / 스트레칭</b> — 각 단계별 초 단위 시간과 반복할 세트 수예요. 입력하면 아래 "총 예상 시간"이 바로 계산돼요.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>2. 타이머 조작하기</h3>
+      <ul>
+        <li><span class="help-kbd">▶ 시작</span> — 설정한 루틴대로 타이머가 시작돼요. 단계가 바뀔 때마다 소리로 알려줘요.</li>
+        <li><span class="help-kbd">⏸ 일시정지</span> / <span class="help-kbd">▶ 재시작</span> — 잠깐 멈췄다가 이어서 할 수 있어요.</li>
+        <li><span class="help-kbd">■ 정지</span> — 운동을 중간에 끝내고 초기화해요. 이미 기록한 내용이 있으면 저장할지 먼저 물어봐요.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>3. 세트 기록 남기기</h3>
+      <p>휴식 시간이 되면 방금 끝낸 세트의 기록 카드가 자동으로 떠요. 입력한 운동 종목마다 무게(kg)·횟수를 각각 적고, 아래 세트 메모에 컨디션이나 특이사항을 자유롭게 남기면 돼요. 입력하는 즉시 자동 저장되니 따로 저장 버튼을 누를 필요는 없어요. 마지막 세트는 휴식이 없으니 스트레칭 화면이나 완료 화면에서 기록하면 됩니다.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>4. 루틴 저장 / 불러오기</h3>
+      <p><b>💾 루틴 저장</b>으로 자주 쓰는 설정을 저장해두고, <b>📂 불러오기</b>로 언제든 다시 불러올 수 있어요.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>5. 지난 기록 히스토리 보기</h3>
+      <p><b>📖 지난 기록 보기</b>를 누르면 완료(또는 중간에 저장한) 운동 기록이 최신순으로 나와요. 항목을 탭하면 세트별 상세 기록이 펼쳐지고, 날짜를 선택해서 특정 날짜 기록만 찾아볼 수도 있어요. 필요 없는 기록은 ✕ 버튼으로 지울 수 있어요.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>📌 기록은 이 기기에만 저장돼요</h3>
+      <p class="muted">모든 루틴·기록은 이 폰(브라우저)에만 로컬로 저장돼요. 앱을 지우거나 다른 기기로 바꾸면 기록이 함께 사라지니, 소중한 기록은 "운동 기록 복사하기"로 가끔 백업해두는 걸 추천드려요.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>📱 홈 화면에 추가해서 앱처럼 쓰기</h3>
+      <p class="muted">브라우저 메뉴에서 "홈 화면에 추가"를 누르면 아이콘이 생겨서 일반 앱처럼 바로 열 수 있어요.</p>
+    </div>
+  </div>
 </div>
 
 <audio id="beepSound" preload="auto"></audio>
@@ -1404,6 +1576,29 @@ function toggleRoutineList() {
   const isHidden = wrap.style.display === 'none';
   wrap.style.display = isHidden ? 'block' : 'none';
   if (isHidden) renderRoutineList();
+}
+
+// === HELP MODAL ===
+function openHelp() {
+  document.getElementById('helpOverlay').classList.add('show');
+}
+
+function closeHelp() {
+  document.getElementById('helpOverlay').classList.remove('show');
+}
+
+function closeHelpOnOverlay(evt) {
+  if (evt.target.id === 'helpOverlay') closeHelp();
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeHelp();
+});
+
+// 처음 방문한 사용자에게는 사용법을 한 번 자동으로 보여줌
+if (!localStorage.getItem('wt_help_seen')) {
+  openHelp();
+  localStorage.setItem('wt_help_seen', '1');
 }
 
 // Init
