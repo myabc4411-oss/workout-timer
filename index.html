@@ -2,11 +2,30 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Workout Timer PRO</title>
+<meta name="description" content="세트/휴식/스트레칭 인터벌 운동 타이머 + 세트별 기록">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="color-scheme" content="dark">
+<meta name="format-detection" content="telephone=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="타이머PRO">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="icon" href="icons/icon-512.png" sizes="512x512" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-y: none;
+  }
 
   :root {
     --bg: #0a0a0a;
@@ -28,18 +47,38 @@
     color: var(--text);
     font-family: 'Noto Sans KR', sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0 0 40px;
+    padding: 0 0 calc(40px + env(safe-area-inset-bottom));
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
   }
+
+  button, .routine-slot, .slot-delete {
+    touch-action: manipulation;
+  }
+
+  /* iOS: keep inputs at 16px+ so focusing a field doesn't auto-zoom the page */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* hide number spinner arrows for a cleaner touch UI */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] { -moz-appearance: textfield; }
 
   /* HEADER */
   header {
     width: 100%;
     background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
     border-bottom: 1px solid var(--border);
-    padding: 16px 20px;
+    padding: calc(16px + env(safe-area-inset-top)) 20px 16px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -191,7 +230,7 @@
 
   .timer-display {
     font-family: 'Roboto Mono', monospace;
-    font-size: 80px;
+    font-size: clamp(52px, 16vw, 80px);
     font-weight: 700;
     line-height: 1;
     letter-spacing: -2px;
@@ -266,6 +305,7 @@
     border-radius: 10px;
     border: none;
     padding: 12px;
+    min-height: 48px;
     font-family: 'Noto Sans KR', sans-serif;
     font-size: 14px;
     font-weight: 500;
@@ -273,6 +313,7 @@
     transition: all 0.15s;
     letter-spacing: 0.5px;
     outline: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .btn:active { transform: scale(0.97); }
@@ -347,8 +388,9 @@
     border: none;
     color: var(--text-dim);
     cursor: pointer;
-    font-size: 16px;
-    padding: 2px 4px;
+    font-size: 18px;
+    padding: 10px;
+    margin: -10px;
     line-height: 1;
     transition: color 0.2s;
   }
@@ -397,6 +439,107 @@
 
   .pulsing { animation: pulse 1s ease-in-out infinite; }
 
+  /* SET LOG CARD */
+  .log-card {
+    display: none;
+    border-color: var(--accent2);
+    animation: logIn 0.25s ease;
+  }
+  .log-card.show { display: block; }
+
+  @keyframes logIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-card .card-title {
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .log-field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .log-field-group .field.full { grid-column: 1 / -1; }
+
+  .field textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    resize: none;
+    min-height: 44px;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  .field textarea:focus { border-color: var(--accent2); }
+
+  .log-saved-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* SET LOG SUMMARY */
+  .log-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    text-align: left;
+  }
+
+  .log-summary-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .log-summary-set {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 700;
+    color: var(--accent2);
+    font-size: 13px;
+    flex-shrink: 0;
+    min-width: 34px;
+  }
+
+  .log-summary-body { flex: 1; min-width: 0; }
+
+  .log-summary-stats {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .log-summary-memo {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .log-summary-empty {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
   /* SECTION DIVIDER */
   .section-divider {
     display: flex;
@@ -431,27 +574,27 @@
     <div class="field-group">
       <div class="field full">
         <label>루틴 이름</label>
-        <input type="text" id="routineName" value="풀업 딥스 푸쉬업 스쿼트" placeholder="루틴 이름 입력">
+        <input type="text" id="routineName" value="풀업 딥스 푸쉬업 스쿼트" placeholder="루틴 이름 입력" autocomplete="off" enterkeyhint="done">
       </div>
       <div class="field">
         <label>준비운동 (초)</label>
-        <input type="number" id="warmup" value="10" min="0">
+        <input type="number" id="warmup" value="10" min="0" inputmode="numeric">
       </div>
       <div class="field">
         <label>운동 시간 (초)</label>
-        <input type="number" id="exercise" value="90" min="1">
+        <input type="number" id="exercise" value="90" min="1" inputmode="numeric">
       </div>
       <div class="field">
         <label>휴식 시간 (초)</label>
-        <input type="number" id="rest" value="120" min="0">
+        <input type="number" id="rest" value="120" min="0" inputmode="numeric">
       </div>
       <div class="field">
         <label>세트 수</label>
-        <input type="number" id="sets" value="10" min="1" max="99">
+        <input type="number" id="sets" value="10" min="1" max="99" inputmode="numeric">
       </div>
       <div class="field full">
         <label>스트레칭 (초)</label>
-        <input type="number" id="stretch" value="300" min="0">
+        <input type="number" id="stretch" value="300" min="0" inputmode="numeric">
       </div>
     </div>
 
@@ -484,6 +627,27 @@
     </div>
 
     <div class="next-phase" id="nextPhase">시작 버튼을 눌러 운동을 시작하세요</div>
+
+    <div class="log-summary" id="logSummary" style="display:none"></div>
+  </div>
+
+  <!-- SET LOG (기록) -->
+  <div class="card log-card" id="log-card">
+    <div class="card-title"><span id="logCardTitle">세트 기록</span><span class="log-saved-hint">자동 저장됨</span></div>
+    <div class="log-field-group">
+      <div class="field">
+        <label>무게 (kg)</label>
+        <input type="number" id="logWeight" placeholder="0" step="0.5" min="0" inputmode="decimal" oninput="saveCurrentLog()">
+      </div>
+      <div class="field">
+        <label>횟수</label>
+        <input type="number" id="logReps" placeholder="0" min="0" inputmode="numeric" oninput="saveCurrentLog()">
+      </div>
+      <div class="field full">
+        <label>메모</label>
+        <textarea id="logMemo" placeholder="컨디션, 통증, 특이사항 등을 자유롭게 남겨보세요" oninput="saveCurrentLog()"></textarea>
+      </div>
+    </div>
   </div>
 
   <!-- CONTROLS -->
@@ -493,6 +657,8 @@
     <button class="btn btn-secondary" id="btnResume" onclick="resumeTimer()" disabled>▶ 재시작</button>
     <button class="btn btn-danger" id="btnStop" onclick="stopTimer()" disabled>■ 정지</button>
   </div>
+
+  <button class="btn btn-accent2 full" id="btnCopyLog" onclick="copyLogSummary()" style="display:none">📋 운동 기록 복사하기</button>
 
   <!-- SAVE / LOAD -->
   <div class="section-divider">루틴 저장 / 불러오기</div>
@@ -509,6 +675,20 @@
     </div>
   </div>
 
+  <!-- WORKOUT HISTORY -->
+  <div class="section-divider">운동 기록 히스토리</div>
+
+  <div class="controls">
+    <button class="btn btn-secondary full" onclick="toggleHistoryList()">📖 지난 기록 보기</button>
+  </div>
+
+  <div id="historyListWrap" style="display:none">
+    <div class="card" style="margin-top:0">
+      <div class="card-title">이 기기에 저장된 기록 (최근 30개)</div>
+      <div class="routine-slots" id="historyList"></div>
+    </div>
+  </div>
+
 </div>
 
 <audio id="beepSound" preload="auto"></audio>
@@ -521,6 +701,13 @@ let currentPhase = null; // 'warmup' | 'exercise' | 'rest' | 'stretch' | 'done'
 let currentSet = 1;
 let isPaused = false;
 let totalSets = 1;
+
+// === SET LOG STATE ===
+let setLogs = {}; // { [setNumber]: { weight, reps, memo } }
+let currentLogSet = null;
+let currentHistoryId = null;
+let expandedHistoryId = null;
+const HISTORY_KEY = 'wt_history';
 
 // === SETTINGS HELPERS ===
 const getVal = id => parseInt(document.getElementById(id).value) || 0;
@@ -608,6 +795,219 @@ function setPhaseUI(phase, timeLeft, set, totalSet) {
   }
 }
 
+// === SET LOG ===
+function showLogCard(setNum, opts) {
+  currentLogSet = setNum;
+  const data = setLogs[setNum] || {};
+  document.getElementById('logWeight').value = data.weight ?? '';
+  document.getElementById('logReps').value = data.reps ?? '';
+  document.getElementById('logMemo').value = data.memo ?? '';
+  const isFinal = opts && opts.final;
+  document.getElementById('logCardTitle').textContent = `${setNum}세트 기록${isFinal ? ' (마지막 세트)' : ''}`;
+  document.getElementById('log-card').classList.add('show');
+}
+
+function hideLogCard() {
+  currentLogSet = null;
+  document.getElementById('log-card').classList.remove('show');
+}
+
+function saveCurrentLog() {
+  if (currentLogSet == null) return;
+  const weight = getStr('logWeight');
+  const reps = getStr('logReps');
+  const memo = getStr('logMemo');
+  if (!weight && !reps && !memo) {
+    delete setLogs[currentLogSet];
+  } else {
+    setLogs[currentLogSet] = { weight, reps, memo };
+  }
+  if (currentPhase === 'done') {
+    renderLogSummary();
+    updateCurrentHistoryEntry();
+  }
+}
+
+function updateLogCardForPhase(item) {
+  if (item.phase === 'rest') {
+    showLogCard(item.set);
+  } else if (item.phase === 'stretch') {
+    showLogCard(totalSets, { final: true });
+  } else {
+    hideLogCard();
+  }
+}
+
+function renderLogSummary() {
+  const el = document.getElementById('logSummary');
+  const rows = [];
+  for (let i = 1; i <= totalSets; i++) {
+    const d = setLogs[i];
+    if (!d) continue;
+    const stats = [d.weight ? `${d.weight}kg` : '', d.reps ? `${d.reps}회` : ''].filter(Boolean).join(' · ');
+    rows.push(`<div class="log-summary-row">
+      <div class="log-summary-set">${i}세트</div>
+      <div class="log-summary-body">
+        ${stats ? `<div class="log-summary-stats">${escapeHtml(stats)}</div>` : ''}
+        ${d.memo ? `<div class="log-summary-memo">${escapeHtml(d.memo)}</div>` : ''}
+        ${!stats && !d.memo ? '<div class="log-summary-empty">기록 없음</div>' : ''}
+      </div>
+    </div>`);
+  }
+  if (rows.length === 0) {
+    el.style.display = 'none';
+    document.getElementById('btnCopyLog').style.display = 'none';
+    return;
+  }
+  el.innerHTML = rows.join('');
+  el.style.display = 'flex';
+  document.getElementById('btnCopyLog').style.display = 'block';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function copyLogSummary() {
+  const routineName = getStr('routineName') || '운동';
+  const lines = [`${routineName} - 세트 기록`];
+  for (let i = 1; i <= totalSets; i++) {
+    const d = setLogs[i];
+    if (!d) continue;
+    const stats = [d.weight ? `${d.weight}kg` : '', d.reps ? `${d.reps}회` : ''].filter(Boolean).join(' · ');
+    let line = `${i}세트`;
+    if (stats) line += ` - ${stats}`;
+    if (d.memo) line += ` (${d.memo})`;
+    lines.push(line);
+  }
+  const text = lines.join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('기록이 복사되었습니다!');
+    }).catch(() => {
+      alert(text);
+    });
+  } else {
+    alert(text);
+  }
+}
+
+function resetLogState() {
+  setLogs = {};
+  currentHistoryId = null;
+  hideLogCard();
+  document.getElementById('logSummary').style.display = 'none';
+  document.getElementById('btnCopyLog').style.display = 'none';
+}
+
+// === WORKOUT HISTORY (이 기기에만 저장됨, localStorage) ===
+function getHistoryList() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+}
+
+function writeHistoryList(list) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+function hasAnyLog() {
+  return Object.keys(setLogs).length > 0;
+}
+
+function createHistoryEntry() {
+  if (!hasAnyLog()) return; // nothing logged yet, don't clutter history
+  const list = getHistoryList();
+  const entry = {
+    id: 'h' + Date.now() + Math.random().toString(36).slice(2, 7),
+    date: new Date().toISOString(),
+    routineName: getStr('routineName') || '이름 없는 루틴',
+    sets: totalSets,
+    logs: { ...setLogs }
+  };
+  list.unshift(entry);
+  if (list.length > 30) list.length = 30;
+  writeHistoryList(list);
+  currentHistoryId = entry.id;
+}
+
+function updateCurrentHistoryEntry() {
+  if (currentPhase !== 'done') return;
+  if (currentHistoryId == null) {
+    if (hasAnyLog()) createHistoryEntry();
+    return;
+  }
+  const list = getHistoryList();
+  const idx = list.findIndex(e => e.id === currentHistoryId);
+  if (idx === -1) return;
+  list[idx].logs = { ...setLogs };
+  writeHistoryList(list);
+}
+
+function toggleHistoryList() {
+  const wrap = document.getElementById('historyListWrap');
+  const isHidden = wrap.style.display === 'none';
+  wrap.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) renderHistoryList();
+}
+
+function formatHistoryDate(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderHistoryList() {
+  const list = getHistoryList();
+  const el = document.getElementById('historyList');
+  if (list.length === 0) {
+    el.innerHTML = '<div class="empty-msg">아직 저장된 운동 기록이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = list.map(entry => {
+    const loggedSets = Object.keys(entry.logs || {}).length;
+    const isOpen = expandedHistoryId === entry.id;
+    let detail = '';
+    if (isOpen) {
+      const rows = Object.keys(entry.logs || {})
+        .map(Number).sort((a, b) => a - b)
+        .map(setNum => {
+          const d = entry.logs[setNum];
+          const stats = [d.weight ? `${d.weight}kg` : '', d.reps ? `${d.reps}회` : ''].filter(Boolean).join(' · ');
+          return `<div class="log-summary-row">
+            <div class="log-summary-set">${setNum}세트</div>
+            <div class="log-summary-body">
+              ${stats ? `<div class="log-summary-stats">${escapeHtml(stats)}</div>` : ''}
+              ${d.memo ? `<div class="log-summary-memo">${escapeHtml(d.memo)}</div>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      detail = `<div class="log-summary" style="display:flex;margin-top:8px">${rows || '<div class="log-summary-empty">기록 없음</div>'}</div>`;
+    }
+    return `<div>
+      <div class="routine-slot" onclick="toggleHistoryDetail('${entry.id}')">
+        <div class="slot-name">${escapeHtml(entry.routineName)}</div>
+        <div class="slot-meta">${formatHistoryDate(entry.date)} · ${loggedSets}/${entry.sets}세트</div>
+        <button class="slot-delete" onclick="event.stopPropagation();deleteHistoryEntry('${entry.id}')">✕</button>
+      </div>
+      ${detail}
+    </div>`;
+  }).join('');
+}
+
+function toggleHistoryDetail(id) {
+  expandedHistoryId = expandedHistoryId === id ? null : id;
+  renderHistoryList();
+}
+
+function deleteHistoryEntry(id) {
+  const list = getHistoryList().filter(e => e.id !== id);
+  writeHistoryList(list);
+  if (expandedHistoryId === id) expandedHistoryId = null;
+  renderHistoryList();
+}
+
 // === BEEP ===
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
@@ -670,6 +1070,7 @@ function startTimer() {
 
   if (phaseQueue.length === 0) return;
 
+  resetLogState();
   btnState(true);
   runPhase(phaseQueue[0]);
 }
@@ -682,6 +1083,7 @@ function runPhase(item) {
 
   beepPhaseChange();
   setPhaseUI(item.phase, remaining, item.set, totalSets);
+  updateLogCardForPhase(item);
   clearInterval(timer);
 
   timer = setInterval(() => {
@@ -713,6 +1115,9 @@ function endWorkout() {
   btnState(false);
   document.getElementById('btnStart').textContent = '▶ 다시 시작';
   document.getElementById('btnStart').disabled = false;
+  showLogCard(totalSets, { final: true });
+  renderLogSummary();
+  createHistoryEntry();
 }
 
 function pauseTimer() {
@@ -745,6 +1150,7 @@ function stopTimer() {
   ['warmup','exercise','rest','stretch'].forEach(s => {
     document.getElementById('seg-'+s).classList.remove('active');
   });
+  resetLogState();
 }
 
 function btnState(running) {
