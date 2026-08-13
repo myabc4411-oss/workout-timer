@@ -684,7 +684,18 @@
 
   <div id="historyListWrap" style="display:none">
     <div class="card" style="margin-top:0">
-      <div class="card-title">이 기기에 저장된 기록 (최근 30개)</div>
+      <div class="card-title">이 기기에 저장된 기록</div>
+      <div class="field-group" style="margin-bottom:10px">
+        <div class="field">
+          <label>날짜로 찾기</label>
+          <input type="date" id="historyDateFilter" oninput="onHistoryDateFilterChange()">
+        </div>
+        <div class="field" style="justify-content:flex-end">
+          <label>&nbsp;</label>
+          <button class="btn btn-secondary" onclick="clearHistoryDateFilter()">전체 보기</button>
+        </div>
+      </div>
+      <div id="historyCount" class="log-saved-hint" style="margin-bottom:8px"></div>
       <div class="routine-slots" id="historyList"></div>
     </div>
   </div>
@@ -707,6 +718,7 @@ let setLogs = {}; // { [setNumber]: { weight, reps, memo } }
 let currentLogSet = null;
 let currentHistoryId = null;
 let expandedHistoryId = null;
+let historyDateFilter = null; // 'YYYY-MM-DD' (local) or null for all
 const HISTORY_KEY = 'wt_history';
 
 // === SETTINGS HELPERS ===
@@ -915,18 +927,19 @@ function hasAnyLog() {
   return Object.keys(setLogs).length > 0;
 }
 
-function createHistoryEntry() {
+function createHistoryEntry(opts) {
   if (!hasAnyLog()) return; // nothing logged yet, don't clutter history
+  const completed = !opts || opts.completed !== false;
   const list = getHistoryList();
   const entry = {
     id: 'h' + Date.now() + Math.random().toString(36).slice(2, 7),
     date: new Date().toISOString(),
     routineName: getStr('routineName') || '이름 없는 루틴',
     sets: totalSets,
+    completed,
     logs: { ...setLogs }
   };
   list.unshift(entry);
-  if (list.length > 30) list.length = 30;
   writeHistoryList(list);
   currentHistoryId = entry.id;
 }
@@ -958,11 +971,44 @@ function formatHistoryDate(iso) {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// local YYYY-MM-DD for an ISO timestamp, so the date filter matches the user's own day boundary
+function toLocalDateKey(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function onHistoryDateFilterChange() {
+  const val = document.getElementById('historyDateFilter').value;
+  historyDateFilter = val || null;
+  renderHistoryList();
+}
+
+function clearHistoryDateFilter() {
+  historyDateFilter = null;
+  document.getElementById('historyDateFilter').value = '';
+  renderHistoryList();
+}
+
 function renderHistoryList() {
-  const list = getHistoryList();
+  const fullList = getHistoryList();
+  const list = historyDateFilter
+    ? fullList.filter(entry => toLocalDateKey(entry.date) === historyDateFilter)
+    : fullList;
   const el = document.getElementById('historyList');
-  if (list.length === 0) {
+  const countEl = document.getElementById('historyCount');
+
+  if (fullList.length === 0) {
+    countEl.textContent = '';
     el.innerHTML = '<div class="empty-msg">아직 저장된 운동 기록이 없습니다</div>';
+    return;
+  }
+  countEl.textContent = historyDateFilter
+    ? `${historyDateFilter} · ${list.length}개`
+    : `전체 ${fullList.length}개`;
+  if (list.length === 0) {
+    el.innerHTML = '<div class="empty-msg">선택한 날짜에는 기록이 없습니다</div>';
     return;
   }
   el.innerHTML = list.map(entry => {
@@ -987,7 +1033,7 @@ function renderHistoryList() {
     }
     return `<div>
       <div class="routine-slot" onclick="toggleHistoryDetail('${entry.id}')">
-        <div class="slot-name">${escapeHtml(entry.routineName)}</div>
+        <div class="slot-name">${escapeHtml(entry.routineName)}${entry.completed === false ? ' <span style="color:var(--danger);font-weight:400">· 중단됨</span>' : ''}</div>
         <div class="slot-meta">${formatHistoryDate(entry.date)} · ${loggedSets}/${entry.sets}세트</div>
         <button class="slot-delete" onclick="event.stopPropagation();deleteHistoryEntry('${entry.id}')">✕</button>
       </div>
@@ -1135,6 +1181,10 @@ function resumeTimer() {
 }
 
 function stopTimer() {
+  if (currentPhase && currentPhase !== 'done' && hasAnyLog()) {
+    const wantsSave = confirm('운동을 중간에 정지합니다.\n지금까지 기록한 세트 기록을 저장하시겠습니까?');
+    if (wantsSave) createHistoryEntry({ completed: false });
+  }
   clearInterval(timer);
   isPaused = false;
   currentPhase = null;
