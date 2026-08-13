@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260813-3'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260813-5'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -555,6 +555,36 @@
 
   .total-info span { color: var(--text); font-weight: 500; }
 
+  /* GOOGLE DRIVE SYNC */
+  .gdrive-card .card-title { color: var(--accent-rest); }
+
+  .gdrive-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .gdrive-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .gdrive-dot.on { background: var(--accent); }
+
+  .gdrive-email { color: var(--text); font-weight: 500; }
+
+  .gdrive-sync-time {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    text-align: center;
+  }
+
   /* COMPLETION */
   .completion-card {
     text-align: center;
@@ -748,6 +778,7 @@
     background: var(--border);
   }
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -847,6 +878,25 @@
   </div>
 
   <button class="btn btn-accent2 full" id="btnCopyLog" onclick="copyLogSummary()" style="display:none">📋 운동 기록 복사하기</button>
+
+  <!-- GOOGLE DRIVE SYNC -->
+  <div class="section-divider">구글 드라이브 백업</div>
+
+  <div class="card gdrive-card" style="margin-top:0">
+    <div class="card-title">☁️ 내 구글 계정에 기록 보관</div>
+    <div class="gdrive-status">
+      <span class="gdrive-dot" id="gdriveDot"></span>
+      <span id="gdriveStatusText">로그인하면 루틴/기록이 이 구글 계정에 백업돼요</span>
+    </div>
+    <div class="controls">
+      <button class="btn btn-secondary full" id="btnGoogleAuth" onclick="toggleGoogleAuth()">🔐 Google로 로그인</button>
+    </div>
+    <div class="controls" style="margin-top:8px">
+      <button class="btn btn-secondary" id="btnGdriveBackup" onclick="driveBackup(true)" disabled>⬆ 지금 백업</button>
+      <button class="btn btn-secondary" id="btnGdriveRestore" onclick="driveRestore(true)" disabled>⬇ 지금 복원</button>
+    </div>
+    <div class="gdrive-sync-time" id="gdriveSyncTime"></div>
+  </div>
 
   <!-- SAVE / LOAD -->
   <div class="section-divider">루틴 저장 / 불러오기</div>
@@ -951,6 +1001,13 @@
 <audio id="beepSound" preload="auto"></audio>
 
 <script>
+// === GOOGLE DRIVE SYNC CONFIG ===
+// Google Cloud Console에서 발급받은 OAuth 2.0 클라이언트 ID로 교체하세요.
+// (APIs & Services > 사용자 인증 정보 > OAuth 클라이언트 ID > 웹 애플리케이션)
+const GOOGLE_CLIENT_ID = '546249707059-lgkrkhchebvratrmlojutcmkhgii4sf1.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email';
+const GDRIVE_BACKUP_FILENAME = 'workout-timer-backup.json';
+
 // === STATE ===
 let timer = null;
 let remaining = 0;
@@ -1241,6 +1298,7 @@ function createHistoryEntry(opts) {
   list.unshift(entry);
   writeHistoryList(list);
   currentHistoryId = entry.id;
+  if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
 }
 
 function updateCurrentHistoryEntry() {
@@ -1254,6 +1312,7 @@ function updateCurrentHistoryEntry() {
   if (idx === -1) return;
   list[idx].logs = { ...setLogs };
   writeHistoryList(list);
+  if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
 }
 
 function toggleHistoryList() {
@@ -1518,7 +1577,9 @@ function saveRoutine() {
   const routines = getSavedRoutines();
   const name = getStr('routineName') || '루틴 ' + (routines.length + 1);
   const data = {
+    id: 'r' + Date.now() + Math.random().toString(36).slice(2, 7),
     name,
+    exercises: getStr('exerciseList'),
     warmup: getVal('warmup'),
     exercise: getVal('exercise'),
     rest: getVal('rest'),
@@ -1531,6 +1592,7 @@ function saveRoutine() {
   localStorage.setItem('wt_routines', JSON.stringify(routines));
   renderRoutineList();
   alert(`"${name}" 루틴이 저장되었습니다!`);
+  driveBackup(false);
 }
 
 function loadRoutine(idx) {
@@ -1538,6 +1600,7 @@ function loadRoutine(idx) {
   const r = routines[idx];
   if (!r) return;
   document.getElementById('routineName').value = r.name;
+  if (r.exercises) document.getElementById('exerciseList').value = r.exercises;
   document.getElementById('warmup').value = r.warmup;
   document.getElementById('exercise').value = r.exercise;
   document.getElementById('rest').value = r.rest;
@@ -1600,6 +1663,238 @@ if (!localStorage.getItem('wt_help_seen')) {
   openHelp();
   localStorage.setItem('wt_help_seen', '1');
 }
+
+// === GOOGLE DRIVE SYNC ===
+// 사용자의 구글 드라이브 "앱 데이터 폴더"(다른 파일과 안 섞이는 숨김 공간)에
+// 루틴/기록을 백업해서, 같은 구글 계정으로 로그인하면 기기를 바꾸거나
+// 앱을 지웠다 다시 설치해도 기록을 이어갈 수 있게 해줍니다.
+let gDriveTokenClient = null;
+let gDriveAccessToken = null;
+let gDriveTokenExpiresAt = 0;
+let gDriveUserEmail = null;
+let gDriveBusy = false;
+
+function isGoogleConfigured() {
+  return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf('YOUR_GOOGLE_CLIENT_ID') === -1;
+}
+
+function ensureGoogleTokenClient() {
+  if (gDriveTokenClient || !window.google || !window.google.accounts) return gDriveTokenClient;
+  gDriveTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    callback: '' // 요청할 때마다 개별 콜백을 지정해서 씀
+  });
+  return gDriveTokenClient;
+}
+
+function requestGoogleToken(promptType) {
+  return new Promise((resolve, reject) => {
+    if (!isGoogleConfigured()) {
+      reject(new Error('GOOGLE_CLIENT_ID가 설정되지 않았습니다.'));
+      return;
+    }
+    const client = ensureGoogleTokenClient();
+    if (!client) {
+      reject(new Error('Google 로그인 스크립트를 아직 불러오는 중입니다. 잠시 후 다시 시도해주세요.'));
+      return;
+    }
+    client.callback = (resp) => {
+      if (resp.error) { reject(resp); return; }
+      gDriveAccessToken = resp.access_token;
+      gDriveTokenExpiresAt = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+      resolve(resp);
+    };
+    client.requestAccessToken({ prompt: promptType || '' });
+  });
+}
+
+async function ensureFreshToken() {
+  if (gDriveAccessToken && Date.now() < gDriveTokenExpiresAt - 60000) return gDriveAccessToken;
+  await requestGoogleToken('');
+  return gDriveAccessToken;
+}
+
+async function toggleGoogleAuth() {
+  if (gDriveAccessToken) {
+    signOutGoogle();
+    return;
+  }
+  if (!isGoogleConfigured()) {
+    alert('아직 Google 로그인이 설정되지 않았어요.\n개발자가 Google Cloud Console에서 발급받은 클라이언트 ID를 코드에 등록해야 사용할 수 있습니다.');
+    return;
+  }
+  try {
+    await requestGoogleToken('consent');
+    await fetchGoogleUserEmail();
+    updateGDriveUI();
+    // 로그인 직후, 클라우드에 있던 예전 기록을 자동으로 한 번 내려받아 합쳐줌
+    await driveRestore(false);
+    await driveBackup(false);
+  } catch (e) {
+    console.error(e);
+    alert('Google 로그인에 실패했어요. 다시 시도해주세요.');
+  }
+}
+
+function signOutGoogle() {
+  if (gDriveAccessToken && window.google && google.accounts && google.accounts.oauth2) {
+    google.accounts.oauth2.revoke(gDriveAccessToken, () => {});
+  }
+  gDriveAccessToken = null;
+  gDriveTokenExpiresAt = 0;
+  gDriveUserEmail = null;
+  updateGDriveUI();
+}
+
+async function fetchGoogleUserEmail() {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: 'Bearer ' + gDriveAccessToken }
+    });
+    if (!res.ok) return;
+    const info = await res.json();
+    gDriveUserEmail = info.email || null;
+  } catch (e) { /* 이메일 표시는 실패해도 치명적이지 않음 */ }
+}
+
+function updateGDriveUI() {
+  const dot = document.getElementById('gdriveDot');
+  const statusText = document.getElementById('gdriveStatusText');
+  const authBtn = document.getElementById('btnGoogleAuth');
+  const backupBtn = document.getElementById('btnGdriveBackup');
+  const restoreBtn = document.getElementById('btnGdriveRestore');
+  const signedIn = !!gDriveAccessToken;
+
+  dot.classList.toggle('on', signedIn);
+  authBtn.textContent = signedIn ? '🔓 로그아웃' : '🔐 Google로 로그인';
+  backupBtn.disabled = !signedIn || gDriveBusy;
+  restoreBtn.disabled = !signedIn || gDriveBusy;
+
+  if (signedIn) {
+    statusText.innerHTML = gDriveUserEmail
+      ? `<span class="gdrive-email">${escapeHtml(gDriveUserEmail)}</span>로 연결됨`
+      : '구글 계정에 연결됨';
+  } else {
+    statusText.textContent = '로그인하면 루틴/기록이 이 구글 계정에 백업돼요';
+  }
+}
+
+function setGdriveSyncTime(text) {
+  document.getElementById('gdriveSyncTime').textContent = text;
+}
+
+async function driveFindBackupFileId() {
+  const token = await ensureFreshToken();
+  const url = 'https://www.googleapis.com/drive/v3/files'
+    + '?spaces=appDataFolder'
+    + '&q=' + encodeURIComponent(`name='${GDRIVE_BACKUP_FILENAME}' and trashed=false`)
+    + '&fields=files(id,name,modifiedTime)';
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) throw new Error('drive list failed: ' + res.status);
+  const data = await res.json();
+  return (data.files && data.files[0]) || null;
+}
+
+// 로컬과 클라우드 백업 내용을 id 기준으로 합침 (한쪽에만 있는 항목은 그대로 살아남음)
+function mergeById(localArr, remoteArr) {
+  const map = new Map();
+  (remoteArr || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+  (localArr || []).forEach(item => { if (item && item.id) map.set(item.id, item); }); // 충돌 시 로컬 우선
+  return Array.from(map.values());
+}
+
+async function driveBackup(manual) {
+  if (!gDriveAccessToken) {
+    if (manual) alert('먼저 Google로 로그인해주세요.');
+    return;
+  }
+  if (gDriveBusy) return;
+  gDriveBusy = true;
+  updateGDriveUI();
+  try {
+    const token = await ensureFreshToken();
+    const payload = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      routines: getSavedRoutines(),
+      history: getHistoryList()
+    };
+    const existing = await driveFindBackupFileId();
+    const body = JSON.stringify(payload);
+
+    let res;
+    if (existing) {
+      res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body
+      });
+    } else {
+      const boundary = 'wtpro-boundary';
+      const metadata = { name: GDRIVE_BACKUP_FILENAME, parents: ['appDataFolder'] };
+      const multipartBody =
+        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+        `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n` +
+        `--${boundary}--`;
+      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body: multipartBody
+      });
+    }
+    if (!res.ok) throw new Error('drive backup failed: ' + res.status);
+    setGdriveSyncTime('마지막 백업: ' + formatHistoryDate(new Date().toISOString()));
+    if (manual) alert('구글 드라이브에 백업했어요!');
+  } catch (e) {
+    console.error(e);
+    if (manual) alert('백업 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.');
+  } finally {
+    gDriveBusy = false;
+    updateGDriveUI();
+  }
+}
+
+async function driveRestore(manual) {
+  if (!gDriveAccessToken) {
+    if (manual) alert('먼저 Google로 로그인해주세요.');
+    return;
+  }
+  if (gDriveBusy) return;
+  gDriveBusy = true;
+  updateGDriveUI();
+  try {
+    const token = await ensureFreshToken();
+    const existing = await driveFindBackupFileId();
+    if (!existing) {
+      if (manual) alert('구글 드라이브에 저장된 백업이 아직 없어요. 먼저 "지금 백업"을 눌러주세요.');
+      return;
+    }
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${existing.id}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('drive restore failed: ' + res.status);
+    const remote = await res.json();
+
+    const mergedRoutines = mergeById(getSavedRoutines(), remote.routines);
+    const mergedHistory = mergeById(getHistoryList(), remote.history);
+    localStorage.setItem('wt_routines', JSON.stringify(mergedRoutines.slice(0, 20)));
+    writeHistoryList(mergedHistory);
+
+    renderRoutineList();
+    renderHistoryList();
+    setGdriveSyncTime('마지막 복원: ' + formatHistoryDate(new Date().toISOString()));
+    if (manual) alert('구글 드라이브 기록을 불러와서 합쳤어요!');
+  } catch (e) {
+    console.error(e);
+    if (manual) alert('복원 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.');
+  } finally {
+    gDriveBusy = false;
+    updateGDriveUI();
+  }
+}
+
+updateGDriveUI();
 
 // Init
 calcTotal();
