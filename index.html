@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260813-1'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260813-2'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -495,6 +495,56 @@
 
   .log-field-group .field.full { grid-column: 1 / -1; }
 
+  /* PER-EXERCISE LOG ROWS */
+  .log-exercise-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .log-exercise-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .log-exercise-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .log-exercise-row input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Roboto Mono', monospace;
+    padding: 8px 8px;
+    outline: none;
+    text-align: center;
+    width: 100%;
+  }
+
+  .log-exercise-row input:focus { border-color: var(--accent2); }
+
+  .log-exercise-header {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 0 0 2px;
+  }
+  .log-exercise-header span:not(:first-child) { text-align: center; }
+
   .field textarea {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -603,6 +653,10 @@
         <label>루틴 이름</label>
         <input type="text" id="routineName" value="풀업 딥스 푸쉬업 스쿼트" placeholder="루틴 이름 입력" autocomplete="off" enterkeyhint="done">
       </div>
+      <div class="field full">
+        <label>운동 종목 (쉼표로 구분)</label>
+        <input type="text" id="exerciseList" value="풀업, 딥스, 푸쉬업, 스쿼트" placeholder="풀업, 딥스, 푸쉬업, 스쿼트" autocomplete="off" enterkeyhint="done">
+      </div>
       <div class="field">
         <label>준비운동 (초)</label>
         <input type="number" id="warmup" value="10" min="0" inputmode="numeric">
@@ -661,17 +715,10 @@
   <!-- SET LOG (기록) -->
   <div class="card log-card" id="log-card">
     <div class="card-title"><span id="logCardTitle">세트 기록</span><span class="log-saved-hint">자동 저장됨</span></div>
+    <div id="logExerciseRows" class="log-exercise-rows"></div>
     <div class="log-field-group">
-      <div class="field">
-        <label>무게 (kg)</label>
-        <input type="number" id="logWeight" placeholder="0" step="0.5" min="0" inputmode="decimal" oninput="saveCurrentLog()">
-      </div>
-      <div class="field">
-        <label>횟수</label>
-        <input type="number" id="logReps" placeholder="0" min="0" inputmode="numeric" oninput="saveCurrentLog()">
-      </div>
       <div class="field full">
-        <label>메모</label>
+        <label>세트 메모</label>
         <textarea id="logMemo" placeholder="컨디션, 통증, 특이사항 등을 자유롭게 남겨보세요" oninput="saveCurrentLog()"></textarea>
       </div>
     </div>
@@ -834,13 +881,56 @@ function setPhaseUI(phase, timeLeft, set, totalSet) {
   }
 }
 
-// === SET LOG ===
+// === SET LOG (종목별 기록) ===
+function getExerciseList() {
+  return getStr('exerciseList')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+// 세트 하나에 기록된 값이 있는지(종목별 무게/횟수 중 하나라도, 또는 메모)
+function setHasData(d) {
+  if (!d) return false;
+  if (d.memo) return true;
+  const ex = d.exercises || {};
+  return Object.keys(ex).some(name => ex[name].weight || ex[name].reps);
+}
+
+function exerciseStatsText(d) {
+  const ex = (d && d.exercises) || {};
+  return Object.keys(ex)
+    .map(name => {
+      const v = ex[name];
+      const parts = [v.weight ? `${v.weight}kg` : '', v.reps ? `${v.reps}회` : ''].filter(Boolean).join(' ');
+      return parts ? `${name} ${parts}` : '';
+    })
+    .filter(Boolean)
+    .join(' · ');
+}
+
 function showLogCard(setNum, opts) {
   currentLogSet = setNum;
-  const data = setLogs[setNum] || {};
-  document.getElementById('logWeight').value = data.weight ?? '';
-  document.getElementById('logReps').value = data.reps ?? '';
-  document.getElementById('logMemo').value = data.memo ?? '';
+  const data = (setLogs[setNum] && setLogs[setNum].exercises) || {};
+  const names = getExerciseList();
+  const rowsEl = document.getElementById('logExerciseRows');
+
+  if (names.length === 0) {
+    rowsEl.innerHTML = '<div class="log-summary-empty">먼저 위 "운동 종목"에 종목을 입력해주세요 (쉼표로 구분)</div>';
+  } else {
+    const header = `<div class="log-exercise-header"><span>종목</span><span>무게(kg)</span><span>횟수</span></div>`;
+    const rows = names.map((name, i) => {
+      const v = data[name] || {};
+      return `<div class="log-exercise-row" data-exercise="${escapeHtml(name)}">
+        <div class="log-exercise-name">${escapeHtml(name)}</div>
+        <input type="number" step="0.5" min="0" inputmode="decimal" placeholder="0" value="${v.weight ? escapeAttr(v.weight) : ''}" oninput="saveCurrentLog()">
+        <input type="number" min="0" inputmode="numeric" placeholder="0" value="${v.reps ? escapeAttr(v.reps) : ''}" oninput="saveCurrentLog()">
+      </div>`;
+    }).join('');
+    rowsEl.innerHTML = header + rows;
+  }
+
+  document.getElementById('logMemo').value = (setLogs[setNum] && setLogs[setNum].memo) || '';
   const isFinal = opts && opts.final;
   document.getElementById('logCardTitle').textContent = `${setNum}세트 기록${isFinal ? ' (마지막 세트)' : ''}`;
   document.getElementById('log-card').classList.add('show');
@@ -853,13 +943,20 @@ function hideLogCard() {
 
 function saveCurrentLog() {
   if (currentLogSet == null) return;
-  const weight = getStr('logWeight');
-  const reps = getStr('logReps');
+  const exercises = {};
+  document.querySelectorAll('#logExerciseRows .log-exercise-row').forEach(row => {
+    const name = row.dataset.exercise;
+    const inputs = row.querySelectorAll('input');
+    const weight = (inputs[0] && inputs[0].value.trim()) || '';
+    const reps = (inputs[1] && inputs[1].value.trim()) || '';
+    if (weight || reps) exercises[name] = { weight, reps };
+  });
   const memo = getStr('logMemo');
-  if (!weight && !reps && !memo) {
+  const entry = { exercises, memo };
+  if (!setHasData(entry)) {
     delete setLogs[currentLogSet];
   } else {
-    setLogs[currentLogSet] = { weight, reps, memo };
+    setLogs[currentLogSet] = entry;
   }
   if (currentPhase === 'done') {
     renderLogSummary();
@@ -882,14 +979,13 @@ function renderLogSummary() {
   const rows = [];
   for (let i = 1; i <= totalSets; i++) {
     const d = setLogs[i];
-    if (!d) continue;
-    const stats = [d.weight ? `${d.weight}kg` : '', d.reps ? `${d.reps}회` : ''].filter(Boolean).join(' · ');
+    if (!setHasData(d)) continue;
+    const stats = exerciseStatsText(d);
     rows.push(`<div class="log-summary-row">
       <div class="log-summary-set">${i}세트</div>
       <div class="log-summary-body">
         ${stats ? `<div class="log-summary-stats">${escapeHtml(stats)}</div>` : ''}
         ${d.memo ? `<div class="log-summary-memo">${escapeHtml(d.memo)}</div>` : ''}
-        ${!stats && !d.memo ? '<div class="log-summary-empty">기록 없음</div>' : ''}
       </div>
     </div>`);
   }
@@ -909,13 +1005,17 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function escapeAttr(str) {
+  return String(str).replace(/"/g, '&quot;');
+}
+
 function copyLogSummary() {
   const routineName = getStr('routineName') || '운동';
   const lines = [`${routineName} - 세트 기록`];
   for (let i = 1; i <= totalSets; i++) {
     const d = setLogs[i];
-    if (!d) continue;
-    const stats = [d.weight ? `${d.weight}kg` : '', d.reps ? `${d.reps}회` : ''].filter(Boolean).join(' · ');
+    if (!setHasData(d)) continue;
+    const stats = exerciseStatsText(d);
     let line = `${i}세트`;
     if (stats) line += ` - ${stats}`;
     if (d.memo) line += ` (${d.memo})`;
@@ -1047,7 +1147,7 @@ function renderHistoryList() {
         .map(Number).sort((a, b) => a - b)
         .map(setNum => {
           const d = entry.logs[setNum];
-          const stats = [d.weight ? `${d.weight}kg` : '', d.reps ? `${d.reps}회` : ''].filter(Boolean).join(' · ');
+          const stats = exerciseStatsText(d);
           return `<div class="log-summary-row">
             <div class="log-summary-set">${setNum}세트</div>
             <div class="log-summary-body">
