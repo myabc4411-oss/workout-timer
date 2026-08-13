@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260813-6'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260813-7'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -275,7 +275,10 @@
     letter-spacing: 1.5px;
     text-transform: uppercase;
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
   }
+  .card-title .block-help-btn { text-transform: none; }
 
   /* FORM FIELDS */
   .field-group {
@@ -295,6 +298,67 @@
     color: var(--text-muted);
     letter-spacing: 0.5px;
     font-weight: 500;
+  }
+
+  /* BILINGUAL (KO/EN) LABELS */
+  .en {
+    display: inline-block;
+    color: var(--text-dim);
+    font-weight: 400;
+    font-style: italic;
+  }
+  label .en, .card-title .en, .section-divider .en {
+    font-size: 0.9em;
+    margin-left: 4px;
+  }
+  .btn .en {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    margin-top: 1px;
+    opacity: 0.75;
+    font-style: normal;
+  }
+
+  /* BLOCK-LEVEL HELP (ⓘ) */
+  .block-help-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: 6px;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    vertical-align: middle;
+  }
+  .block-help-btn:hover, .block-help-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  .block-help-box {
+    display: none;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-muted);
+  }
+  .block-help-box.show { display: block; }
+  .block-help-box .en {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-dim);
+    font-size: 0.95em;
   }
 
   .field input[type="text"],
@@ -354,6 +418,13 @@
     margin-bottom: 4px;
     transition: color 0.3s;
   }
+  .phase-label .en {
+    display: block;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+  }
 
   .phase-warmup { color: var(--accent); }
   .phase-exercise { color: var(--accent2); }
@@ -410,6 +481,11 @@
     font-weight: 500;
     color: var(--text-muted);
   }
+  .set-badge .en {
+    font-size: 0.85em;
+    margin-left: 4px;
+  }
+  .set-badge .en::before { content: '· '; }
 
   .set-progress {
     width: 120px;
@@ -687,6 +763,11 @@
     padding: 0 0 2px;
   }
   .log-exercise-header span:not(:first-child) { text-align: center; }
+  .log-exercise-header .en {
+    font-size: 9px;
+    text-transform: none;
+    opacity: 0.8;
+  }
 
   .field textarea {
     background: var(--surface2);
@@ -792,46 +873,53 @@
 
   <!-- ROUTINE SETTINGS -->
   <div class="card" id="settings-card">
-    <div class="card-title">루틴 설정</div>
+    <div class="card-title">루틴 설정<span class="en">Routine Settings</span>
+      <button class="block-help-btn" onclick="toggleBlockHelp('settings')" aria-label="도움말">?</button>
+    </div>
+    <div class="block-help-box" id="bh-settings">
+      각 항목은 초(sec) 단위이고, 세트 수만큼 "운동 → 휴식"이 반복돼요. 운동 종목은 쉼표로 여러 개 입력하면 세트마다 각각 기록할 수 있어요.
+      <span class="en">All time fields are in seconds. "Work → Rest" repeats for the number of sets. List multiple exercises separated by commas to log each one per set.</span>
+    </div>
     <div class="field-group">
       <div class="field full">
-        <label>루틴 이름</label>
-        <input type="text" id="routineName" value="풀업 딥스 푸쉬업 스쿼트" placeholder="루틴 이름 입력" autocomplete="off" enterkeyhint="done">
+        <label>루틴 이름 <span class="en">Routine Name</span></label>
+        <input type="text" id="routineName" value="풀업 딥스 푸쉬업 스쿼트" placeholder="루틴 이름 입력 / Enter routine name" autocomplete="off" enterkeyhint="done">
       </div>
       <div class="field full">
-        <label>운동 종목 (쉼표로 구분)</label>
+        <label>운동 종목 (쉼표로 구분) <span class="en">Exercises (comma-separated)</span></label>
         <input type="text" id="exerciseList" value="풀업, 딥스, 푸쉬업, 스쿼트" placeholder="풀업, 딥스, 푸쉬업, 스쿼트" autocomplete="off" enterkeyhint="done">
       </div>
       <div class="field">
-        <label>준비운동 (초)</label>
+        <label>준비운동 (초) <span class="en">Warm-up (sec)</span></label>
         <input type="number" id="warmup" value="10" min="0" inputmode="numeric">
       </div>
       <div class="field">
-        <label>운동 시간 (초)</label>
+        <label>운동 시간 (초) <span class="en">Work (sec)</span></label>
         <input type="number" id="exercise" value="90" min="1" inputmode="numeric">
       </div>
       <div class="field">
-        <label>휴식 시간 (초)</label>
+        <label>휴식 시간 (초) <span class="en">Rest (sec)</span></label>
         <input type="number" id="rest" value="120" min="0" inputmode="numeric">
       </div>
       <div class="field">
-        <label>세트 수</label>
+        <label>세트 수 <span class="en">Sets</span></label>
         <input type="number" id="sets" value="10" min="1" max="99" inputmode="numeric">
       </div>
       <div class="field full">
-        <label>스트레칭 (초)</label>
+        <label>스트레칭 (초) <span class="en">Stretch (sec)</span></label>
         <input type="number" id="stretch" value="300" min="0" inputmode="numeric">
       </div>
     </div>
 
     <div class="total-info" id="totalInfo">
-      <span>총 예상 시간</span>
+      <span>총 예상 시간 <span class="en">Total Time</span></span>
       <span id="totalTime">--</span>
     </div>
   </div>
 
   <!-- TIMER DISPLAY -->
-  <div class="card" id="timer-card">
+  <div class="card" id="timer-card" style="position:relative">
+    <button class="block-help-btn" style="position:absolute;top:14px;right:14px" onclick="toggleBlockHelp('timer')" aria-label="도움말">?</button>
     <div class="phase-bar">
       <div class="phase-seg warmup" id="seg-warmup"></div>
       <div class="phase-seg exercise" id="seg-exercise"></div>
@@ -839,98 +927,137 @@
       <div class="phase-seg stretch" id="seg-stretch"></div>
     </div>
 
-    <div class="phase-label phase-exercise" id="phaseLabel">운동 준비</div>
+    <div class="phase-label phase-exercise" id="phaseLabel">운동 준비<span class="en">Ready</span></div>
 
     <div class="timer-wrap">
       <div class="timer-display timer-exercise" id="timerDisplay">00:00</div>
     </div>
 
     <div class="set-info" id="setInfo">
-      <div class="set-badge" id="setBadge">대기 중</div>
+      <div class="set-badge" id="setBadge">대기 중<span class="en">Waiting</span></div>
       <div class="set-progress">
         <div class="set-progress-fill" id="setProgressFill" style="width:0%"></div>
       </div>
     </div>
 
-    <div class="next-phase" id="nextPhase">시작 버튼을 눌러 운동을 시작하세요</div>
+    <div class="next-phase" id="nextPhase">시작 버튼을 눌러 운동을 시작하세요<span class="en" style="display:block">Press Start to begin your workout</span></div>
+
+    <div class="block-help-box" id="bh-timer">
+      색깔 막대는 현재 단계(준비운동/운동/휴식/스트레칭)를 보여줘요. 가운데 숫자는 남은 시간이고, "다음:" 문구로 그다음 단계를 미리 알려드려요.
+      <span class="en">The colored bar shows the current phase (warm-up/work/rest/stretch). The big number is time remaining, and "Next:" previews what's coming up.</span>
+    </div>
 
     <div class="log-summary" id="logSummary" style="display:none"></div>
   </div>
 
   <!-- SET LOG (기록) -->
   <div class="card log-card" id="log-card">
-    <div class="card-title"><span id="logCardTitle">세트 기록</span><span class="log-saved-hint">자동 저장됨</span></div>
+    <div class="card-title">
+      <span style="display:flex;align-items:center"><span id="logCardTitle">세트 기록</span><span class="en">Set Log</span>
+        <button class="block-help-btn" onclick="toggleBlockHelp('log')" aria-label="도움말">?</button>
+      </span>
+      <span class="log-saved-hint">자동 저장됨 <span class="en">Auto-saved</span></span>
+    </div>
+    <div class="block-help-box" id="bh-log">
+      휴식 시간이 되면 이 카드가 자동으로 나타나요. 운동 종목별로 무게(kg)·횟수를 적고, 아래 메모칸에 컨디션을 남기면 입력하는 즉시 저장돼요.
+      <span class="en">This card appears automatically during rest. Enter weight(kg)/reps per exercise and jot notes below — everything saves as you type.</span>
+    </div>
     <div id="logExerciseRows" class="log-exercise-rows"></div>
     <div class="log-field-group">
       <div class="field full">
-        <label>세트 메모</label>
-        <textarea id="logMemo" placeholder="컨디션, 통증, 특이사항 등을 자유롭게 남겨보세요" oninput="saveCurrentLog()"></textarea>
+        <label>세트 메모 <span class="en">Set Notes</span></label>
+        <textarea id="logMemo" placeholder="컨디션, 통증, 특이사항 등을 자유롭게 남겨보세요 / Add notes here" oninput="saveCurrentLog()"></textarea>
       </div>
     </div>
   </div>
 
   <!-- CONTROLS -->
+  <div class="section-divider">타이머 조작<span class="en">Timer Controls</span>
+    <button class="block-help-btn" onclick="toggleBlockHelp('controls')" aria-label="도움말">?</button>
+  </div>
+  <div class="block-help-box" id="bh-controls">
+    시작으로 루틴을 시작하고, 일시정지·재시작으로 잠깐 멈췄다 이어가요. 정지는 운동을 중간에 끝내며, 기록이 있으면 저장할지 물어봐요.
+    <span class="en">Start begins the routine; Pause/Resume lets you break and continue. Stop ends early — you'll be asked to save any logged data first.</span>
+  </div>
   <div class="controls">
-    <button class="btn btn-primary" id="btnStart" onclick="startTimer()">▶ 시작</button>
-    <button class="btn btn-secondary" id="btnPause" onclick="pauseTimer()" disabled>⏸ 일시정지</button>
-    <button class="btn btn-secondary" id="btnResume" onclick="resumeTimer()" disabled>▶ 재시작</button>
-    <button class="btn btn-danger" id="btnStop" onclick="stopTimer()" disabled>■ 정지</button>
+    <button class="btn btn-primary" id="btnStart" onclick="startTimer()">▶ 시작<span class="en">Start</span></button>
+    <button class="btn btn-secondary" id="btnPause" onclick="pauseTimer()" disabled>⏸ 일시정지<span class="en">Pause</span></button>
+    <button class="btn btn-secondary" id="btnResume" onclick="resumeTimer()" disabled>▶ 재시작<span class="en">Resume</span></button>
+    <button class="btn btn-danger" id="btnStop" onclick="stopTimer()" disabled>■ 정지<span class="en">Stop</span></button>
   </div>
 
-  <button class="btn btn-accent2 full" id="btnCopyLog" onclick="copyLogSummary()" style="display:none">📋 운동 기록 복사하기</button>
+  <button class="btn btn-accent2 full" id="btnCopyLog" onclick="copyLogSummary()" style="display:none">📋 운동 기록 복사하기<span class="en">Copy Log</span></button>
 
   <!-- GOOGLE DRIVE SYNC -->
-  <div class="section-divider">구글 드라이브 백업</div>
+  <div class="section-divider">구글 드라이브 백업<span class="en">Google Drive Backup</span></div>
 
   <div class="card gdrive-card" style="margin-top:0">
-    <div class="card-title">☁️ 내 구글 계정에 기록 보관</div>
+    <div class="card-title">☁️ 내 구글 계정에 기록 보관<span class="en">Save to My Google Account</span>
+      <button class="block-help-btn" onclick="toggleBlockHelp('gdrive')" aria-label="도움말">?</button>
+    </div>
+    <div class="block-help-box" id="bh-gdrive">
+      로그인하면 내 구글 드라이브의 숨김 폴더에 루틴/기록이 자동 백업돼요. 기기를 바꾸거나 앱을 지워도, 같은 계정으로 로그인하면 다시 불러올 수 있어요.
+      <span class="en">Signing in backs up your routines/history to a hidden folder in your own Google Drive. Sign in again on a new device or after reinstalling to get it all back.</span>
+    </div>
     <div class="gdrive-status">
       <span class="gdrive-dot" id="gdriveDot"></span>
-      <span id="gdriveStatusText">로그인하면 루틴/기록이 이 구글 계정에 백업돼요</span>
+      <span id="gdriveStatusText">로그인하면 루틴/기록이 이 구글 계정에 백업돼요<span class="en" style="display:block">Sign in to back up your routines/history to this account</span></span>
     </div>
     <div class="controls">
-      <button class="btn btn-secondary full" id="btnGoogleAuth" onclick="toggleGoogleAuth()">🔐 Google로 로그인</button>
+      <button class="btn btn-secondary full" id="btnGoogleAuth" onclick="toggleGoogleAuth()">🔐 Google로 로그인<span class="en">Sign in with Google</span></button>
     </div>
     <div class="controls" style="margin-top:8px">
-      <button class="btn btn-secondary" id="btnGdriveBackup" onclick="driveBackup(true)" disabled>⬆ 지금 백업</button>
-      <button class="btn btn-secondary" id="btnGdriveRestore" onclick="driveRestore(true)" disabled>⬇ 지금 복원</button>
+      <button class="btn btn-secondary" id="btnGdriveBackup" onclick="driveBackup(true)" disabled>⬆ 지금 백업<span class="en">Back Up Now</span></button>
+      <button class="btn btn-secondary" id="btnGdriveRestore" onclick="driveRestore(true)" disabled>⬇ 지금 복원<span class="en">Restore Now</span></button>
     </div>
     <div class="gdrive-sync-time" id="gdriveSyncTime"></div>
   </div>
 
   <!-- SAVE / LOAD -->
-  <div class="section-divider">루틴 저장 / 불러오기</div>
+  <div class="section-divider">루틴 저장 / 불러오기<span class="en">Save / Load Routine</span>
+    <button class="block-help-btn" onclick="toggleBlockHelp('save-load')" aria-label="도움말">?</button>
+  </div>
+  <div class="block-help-box" id="bh-save-load">
+    현재 설정을 이름 붙여 저장해두면 다음에 "불러오기"에서 바로 꺼내 쓸 수 있어요. 저장 개수는 제한 없어요.
+    <span class="en">Save the current settings under a name, then load it again anytime from "Load". No limit on how many you can save.</span>
+  </div>
 
   <div class="controls">
-    <button class="btn btn-secondary" onclick="saveRoutine()">💾 루틴 저장</button>
-    <button class="btn btn-secondary" onclick="toggleRoutineList()">📂 불러오기</button>
+    <button class="btn btn-secondary" onclick="saveRoutine()">💾 루틴 저장<span class="en">Save Routine</span></button>
+    <button class="btn btn-secondary" onclick="toggleRoutineList()">📂 불러오기<span class="en">Load</span></button>
   </div>
 
   <div id="routineListWrap" style="display:none">
     <div class="card" style="margin-top:0">
-      <div class="card-title">저장된 루틴</div>
+      <div class="card-title">저장된 루틴<span class="en">Saved Routines</span></div>
       <div class="routine-slots" id="routineList"></div>
     </div>
   </div>
 
   <!-- WORKOUT HISTORY -->
-  <div class="section-divider">운동 기록 히스토리</div>
+  <div class="section-divider">운동 기록 히스토리<span class="en">Workout History</span>
+    <button class="block-help-btn" onclick="toggleBlockHelp('history')" aria-label="도움말">?</button>
+  </div>
+  <div class="block-help-box" id="bh-history">
+    운동이 끝나거나 정지 시 저장을 선택하면 여기 기록으로 쌓여요. 날짜로 찾기를 이용하면 원하는 날짜의 기록만 볼 수 있어요.
+    <span class="en">Every workout you save (on finish or on stop) appears here. Use "Find by date" to filter to a specific day.</span>
+  </div>
 
   <div class="controls">
-    <button class="btn btn-secondary full" onclick="toggleHistoryList()">📖 지난 기록 보기</button>
+    <button class="btn btn-secondary full" onclick="toggleHistoryList()">📖 지난 기록 보기<span class="en">View Past Records</span></button>
   </div>
 
   <div id="historyListWrap" style="display:none">
     <div class="card" style="margin-top:0">
-      <div class="card-title">이 기기에 저장된 기록</div>
+      <div class="card-title">이 기기에 저장된 기록<span class="en">Records on This Device</span></div>
       <div class="field-group" style="margin-bottom:10px">
         <div class="field">
-          <label>날짜로 찾기</label>
+          <label>날짜로 찾기 <span class="en">Find by Date</span></label>
           <input type="date" id="historyDateFilter" oninput="onHistoryDateFilterChange()">
         </div>
         <div class="field" style="justify-content:flex-end">
           <label>&nbsp;</label>
-          <button class="btn btn-secondary" onclick="clearHistoryDateFilter()">전체 보기</button>
+          <button class="btn btn-secondary" onclick="clearHistoryDateFilter()">전체 보기<span class="en">Show All</span></button>
         </div>
       </div>
       <div id="historyCount" class="log-saved-hint" style="margin-bottom:8px"></div>
@@ -944,56 +1071,56 @@
 <div class="help-overlay" id="helpOverlay" onclick="closeHelpOnOverlay(event)">
   <div class="help-box">
     <div class="help-box-header">
-      <h2>사용법</h2>
+      <h2>사용법<span class="en">User Guide</span></h2>
       <button class="help-close" onclick="closeHelp()" aria-label="닫기">✕</button>
     </div>
 
     <div class="help-section">
-      <h3>💪 이 앱은 무엇인가요?</h3>
-      <p>준비운동 → 운동 → 휴식을 정해진 세트 수만큼 반복하고, 마지막에 스트레칭까지 안내해주는 인터벌 운동 타이머예요. 세트마다 운동 종목별 무게·횟수와 메모를 남길 수 있어서, 운동 기록도 함께 관리할 수 있어요.</p>
+      <h3>💪 이 앱은 무엇인가요? <span class="en">What is this app?</span></h3>
+      <p>준비운동 → 운동 → 휴식을 정해진 세트 수만큼 반복하고, 마지막에 스트레칭까지 안내해주는 인터벌 운동 타이머예요. 세트마다 운동 종목별 무게·횟수와 메모를 남길 수 있어서, 운동 기록도 함께 관리할 수 있어요.<span class="en" style="display:block;margin-top:4px">An interval workout timer that cycles Warm-up → Work → Rest for a set number of sets, then guides you through a final stretch. You can log weight/reps per exercise and notes for each set, so it doubles as a workout log.</span></p>
     </div>
 
     <div class="help-section">
-      <h3>1. 루틴 설정하기</h3>
+      <h3>1. 루틴 설정하기 <span class="en">Set up a routine</span></h3>
       <ul>
-        <li><b>루틴 이름</b> — 저장할 때 구분할 수 있는 이름이에요.</li>
-        <li><b>운동 종목 (쉼표로 구분)</b> — 한 세트 안에서 수행하는 종목들을 "풀업, 딥스, 푸쉬업, 스쿼트"처럼 쉼표로 나눠 입력하세요. 휴식 시간에 이 종목별로 기록칸이 자동으로 생겨요.</li>
-        <li><b>준비운동 / 운동 시간 / 휴식 시간 / 세트 수 / 스트레칭</b> — 각 단계별 초 단위 시간과 반복할 세트 수예요. 입력하면 아래 "총 예상 시간"이 바로 계산돼요.</li>
+        <li><b>루틴 이름</b> — 저장할 때 구분할 수 있는 이름이에요.<span class="en" style="display:block">Routine Name — a label to tell saved routines apart.</span></li>
+        <li><b>운동 종목 (쉼표로 구분)</b> — 한 세트 안에서 수행하는 종목들을 "풀업, 딥스, 푸쉬업, 스쿼트"처럼 쉼표로 나눠 입력하세요. 휴식 시간에 이 종목별로 기록칸이 자동으로 생겨요.<span class="en" style="display:block">Exercises (comma-separated) — list the exercises you do in one set, e.g. "Pull-ups, Dips, Push-ups, Squats". A log field for each appears automatically during rest.</span></li>
+        <li><b>준비운동 / 운동 시간 / 휴식 시간 / 세트 수 / 스트레칭</b> — 각 단계별 초 단위 시간과 반복할 세트 수예요. 입력하면 아래 "총 예상 시간"이 바로 계산돼요.<span class="en" style="display:block">Warm-up / Work / Rest / Sets / Stretch — durations in seconds and how many sets to repeat. "Total Time" below updates as you type.</span></li>
       </ul>
     </div>
 
     <div class="help-section">
-      <h3>2. 타이머 조작하기</h3>
+      <h3>2. 타이머 조작하기 <span class="en">Control the timer</span></h3>
       <ul>
-        <li><span class="help-kbd">▶ 시작</span> — 설정한 루틴대로 타이머가 시작돼요. 단계가 바뀔 때마다 소리로 알려줘요.</li>
-        <li><span class="help-kbd">⏸ 일시정지</span> / <span class="help-kbd">▶ 재시작</span> — 잠깐 멈췄다가 이어서 할 수 있어요.</li>
-        <li><span class="help-kbd">■ 정지</span> — 운동을 중간에 끝내고 초기화해요. 이미 기록한 내용이 있으면 저장할지 먼저 물어봐요.</li>
+        <li><span class="help-kbd">▶ 시작</span> — 설정한 루틴대로 타이머가 시작돼요. 단계가 바뀔 때마다 소리로 알려줘요.<span class="en" style="display:block">Start — begins the timer per your routine, with a sound cue on every phase change.</span></li>
+        <li><span class="help-kbd">⏸ 일시정지</span> / <span class="help-kbd">▶ 재시작</span> — 잠깐 멈췄다가 이어서 할 수 있어요.<span class="en" style="display:block">Pause / Resume — pause briefly and pick up where you left off.</span></li>
+        <li><span class="help-kbd">■ 정지</span> — 운동을 중간에 끝내고 초기화해요. 이미 기록한 내용이 있으면 저장할지 먼저 물어봐요.<span class="en" style="display:block">Stop — ends the workout early and resets. If you've already logged data, you'll be asked whether to save it first.</span></li>
       </ul>
     </div>
 
     <div class="help-section">
-      <h3>3. 세트 기록 남기기</h3>
-      <p>휴식 시간이 되면 방금 끝낸 세트의 기록 카드가 자동으로 떠요. 입력한 운동 종목마다 무게(kg)·횟수를 각각 적고, 아래 세트 메모에 컨디션이나 특이사항을 자유롭게 남기면 돼요. 입력하는 즉시 자동 저장되니 따로 저장 버튼을 누를 필요는 없어요. 마지막 세트는 휴식이 없으니 스트레칭 화면이나 완료 화면에서 기록하면 됩니다.</p>
+      <h3>3. 세트 기록 남기기 <span class="en">Log a set</span></h3>
+      <p>휴식 시간이 되면 방금 끝낸 세트의 기록 카드가 자동으로 떠요. 입력한 운동 종목마다 무게(kg)·횟수를 각각 적고, 아래 세트 메모에 컨디션이나 특이사항을 자유롭게 남기면 돼요. 입력하는 즉시 자동 저장되니 따로 저장 버튼을 누를 필요는 없어요. 마지막 세트는 휴식이 없으니 스트레칭 화면이나 완료 화면에서 기록하면 됩니다.<span class="en" style="display:block;margin-top:4px">When rest starts, the log card for the set you just finished appears automatically. Enter weight(kg)/reps for each exercise, and add any notes below — everything saves as you type, no save button needed. The last set has no rest, so log it from the stretch or finish screen.</span></p>
     </div>
 
     <div class="help-section">
-      <h3>4. 루틴 저장 / 불러오기</h3>
-      <p><b>💾 루틴 저장</b>으로 자주 쓰는 설정을 저장해두고, <b>📂 불러오기</b>로 언제든 다시 불러올 수 있어요.</p>
+      <h3>4. 루틴 저장 / 불러오기 <span class="en">Save / Load a routine</span></h3>
+      <p><b>💾 루틴 저장</b>으로 자주 쓰는 설정을 저장해두고, <b>📂 불러오기</b>로 언제든 다시 불러올 수 있어요.<span class="en" style="display:block;margin-top:4px">Use <b>Save Routine</b> to store settings you use often, and <b>Load</b> to bring them back anytime.</span></p>
     </div>
 
     <div class="help-section">
-      <h3>5. 지난 기록 히스토리 보기</h3>
-      <p><b>📖 지난 기록 보기</b>를 누르면 완료(또는 중간에 저장한) 운동 기록이 최신순으로 나와요. 항목을 탭하면 세트별 상세 기록이 펼쳐지고, 날짜를 선택해서 특정 날짜 기록만 찾아볼 수도 있어요. 필요 없는 기록은 ✕ 버튼으로 지울 수 있어요.</p>
+      <h3>5. 지난 기록 히스토리 보기 <span class="en">View workout history</span></h3>
+      <p><b>📖 지난 기록 보기</b>를 누르면 완료(또는 중간에 저장한) 운동 기록이 최신순으로 나와요. 항목을 탭하면 세트별 상세 기록이 펼쳐지고, 날짜를 선택해서 특정 날짜 기록만 찾아볼 수도 있어요. 필요 없는 기록은 ✕ 버튼으로 지울 수 있어요.<span class="en" style="display:block;margin-top:4px">Tap <b>View Past Records</b> to see finished (or manually saved) workouts, newest first. Tap an entry to expand its set-by-set details, or filter by date to find a specific day. Remove records you no longer need with the ✕ button.</span></p>
     </div>
 
     <div class="help-section">
-      <h3>📌 기록은 이 기기에만 저장돼요</h3>
-      <p class="muted">모든 루틴·기록은 이 폰(브라우저)에만 로컬로 저장돼요. 앱을 지우거나 다른 기기로 바꾸면 기록이 함께 사라지니, 소중한 기록은 "운동 기록 복사하기"로 가끔 백업해두는 걸 추천드려요.</p>
+      <h3>📌 기록은 이 기기에만 저장돼요 <span class="en">Records are stored on this device</span></h3>
+      <p class="muted">모든 루틴·기록은 이 폰(브라우저)에만 로컬로 저장돼요. 앱을 지우거나 다른 기기로 바꾸면 기록이 함께 사라지니, 소중한 기록은 "운동 기록 복사하기"로 가끔 백업해두거나 구글 드라이브 백업을 사용하는 걸 추천드려요.<span class="en" style="display:block;margin-top:4px">All routines/records are stored locally on this phone/browser only. Uninstalling the app or switching devices erases them, so back up important records with "Copy Log" occasionally, or use the Google Drive backup feature.</span></p>
     </div>
 
     <div class="help-section">
-      <h3>📱 홈 화면에 추가해서 앱처럼 쓰기</h3>
-      <p class="muted">브라우저 메뉴에서 "홈 화면에 추가"를 누르면 아이콘이 생겨서 일반 앱처럼 바로 열 수 있어요.</p>
+      <h3>📱 홈 화면에 추가해서 앱처럼 쓰기 <span class="en">Add to home screen</span></h3>
+      <p class="muted">브라우저 메뉴에서 "홈 화면에 추가"를 누르면 아이콘이 생겨서 일반 앱처럼 바로 열 수 있어요.<span class="en" style="display:block;margin-top:4px">Tap "Add to Home Screen" in your browser menu to get an icon you can open like a regular app.</span></p>
     </div>
   </div>
 </div>
@@ -1059,6 +1186,16 @@ const phaseNames = {
   stretch: '스트레칭',
   done: '완료!'
 };
+const phaseNamesEn = {
+  warmup: 'Warm-up',
+  exercise: 'Work',
+  rest: 'Rest',
+  stretch: 'Stretch',
+  done: 'Done!'
+};
+function bi(ko, en) {
+  return `${ko}<span class="en">${en}</span>`;
+}
 
 function setPhaseUI(phase, timeLeft, set, totalSet) {
   const label = document.getElementById('phaseLabel');
@@ -1075,7 +1212,7 @@ function setPhaseUI(phase, timeLeft, set, totalSet) {
 
   label.classList.add('phase-'+phase);
   display.classList.add('timer-'+phase);
-  label.textContent = phaseNames[phase] || '';
+  label.innerHTML = phaseNames[phase] ? bi(phaseNames[phase], phaseNamesEn[phase] || '') : '';
   display.textContent = formatTime(timeLeft);
 
   // Phase bar
@@ -1086,26 +1223,27 @@ function setPhaseUI(phase, timeLeft, set, totalSet) {
   });
 
   if (phase === 'done') {
-    badge.textContent = '완료 🎉';
-    nextEl.textContent = '수고하셨습니다!';
+    badge.innerHTML = bi('완료 🎉', 'Done 🎉');
+    nextEl.innerHTML = bi('수고하셨습니다!', 'Great work!');
     fill.style.width = '100%';
   } else if (phase === 'warmup') {
-    badge.textContent = '워밍업';
-    nextEl.textContent = `다음: 운동 (${formatTime(getVal('exercise'))})`;
+    badge.innerHTML = bi('워밍업', 'Warm-up');
+    nextEl.innerHTML = bi(`다음: 운동 (${formatTime(getVal('exercise'))})`, `Next: Work (${formatTime(getVal('exercise'))})`);
     fill.style.width = '0%';
   } else if (phase === 'exercise') {
-    badge.textContent = `${set} / ${totalSet} 세트`;
+    badge.innerHTML = bi(`${set} / ${totalSet} 세트`, `Set ${set} / ${totalSet}`);
     const nextPhase = set >= totalSet ? '스트레칭' : '휴식';
+    const nextPhaseEn = set >= totalSet ? 'Stretch' : 'Rest';
     const nextTime = set >= totalSet ? formatTime(getVal('stretch')) : formatTime(getVal('rest'));
-    nextEl.textContent = `다음: ${nextPhase} (${nextTime})`;
+    nextEl.innerHTML = bi(`다음: ${nextPhase} (${nextTime})`, `Next: ${nextPhaseEn} (${nextTime})`);
     fill.style.width = `${(set / totalSet) * 100}%`;
   } else if (phase === 'rest') {
-    badge.textContent = `${set} / ${totalSet} 세트 휴식`;
-    nextEl.textContent = `다음: 운동 (${formatTime(getVal('exercise'))})`;
+    badge.innerHTML = bi(`${set} / ${totalSet} 세트 휴식`, `Set ${set} / ${totalSet} Rest`);
+    nextEl.innerHTML = bi(`다음: 운동 (${formatTime(getVal('exercise'))})`, `Next: Work (${formatTime(getVal('exercise'))})`);
     fill.style.width = `${(set / totalSet) * 100}%`;
   } else if (phase === 'stretch') {
-    badge.textContent = '스트레칭';
-    nextEl.textContent = '마무리 중...';
+    badge.innerHTML = bi('스트레칭', 'Stretch');
+    nextEl.innerHTML = bi('마무리 중...', 'Finishing up...');
     fill.style.width = '100%';
   }
 }
@@ -1145,9 +1283,9 @@ function showLogCard(setNum, opts) {
   const rowsEl = document.getElementById('logExerciseRows');
 
   if (names.length === 0) {
-    rowsEl.innerHTML = '<div class="log-summary-empty">먼저 위 "운동 종목"에 종목을 입력해주세요 (쉼표로 구분)</div>';
+    rowsEl.innerHTML = '<div class="log-summary-empty">먼저 위 "운동 종목"에 종목을 입력해주세요 (쉼표로 구분) <span class="en">Please enter exercises above first (comma-separated)</span></div>';
   } else {
-    const header = `<div class="log-exercise-header"><span>종목</span><span>무게(kg)</span><span>횟수</span></div>`;
+    const header = `<div class="log-exercise-header"><span>종목<span class="en" style="display:block">Exercise</span></span><span>무게(kg)<span class="en" style="display:block">Weight(kg)</span></span><span>횟수<span class="en" style="display:block">Reps</span></span></div>`;
     const rows = names.map((name, i) => {
       const v = data[name] || {};
       return `<div class="log-exercise-row" data-exercise="${escapeHtml(name)}">
@@ -1161,7 +1299,7 @@ function showLogCard(setNum, opts) {
 
   document.getElementById('logMemo').value = (setLogs[setNum] && setLogs[setNum].memo) || '';
   const isFinal = opts && opts.final;
-  document.getElementById('logCardTitle').textContent = `${setNum}세트 기록${isFinal ? ' (마지막 세트)' : ''}`;
+  document.getElementById('logCardTitle').innerHTML = bi(`${setNum}세트 기록${isFinal ? ' (마지막 세트)' : ''}`, `Set ${setNum} Log${isFinal ? ' (Final Set)' : ''}`);
   document.getElementById('log-card').classList.add('show');
 }
 
@@ -1253,7 +1391,7 @@ function copyLogSummary() {
   const text = lines.join('\n');
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => {
-      alert('기록이 복사되었습니다!');
+      alert('기록이 복사되었습니다! / Copied to clipboard!');
     }).catch(() => {
       alert(text);
     });
@@ -1359,14 +1497,14 @@ function renderHistoryList() {
 
   if (fullList.length === 0) {
     countEl.textContent = '';
-    el.innerHTML = '<div class="empty-msg">아직 저장된 운동 기록이 없습니다</div>';
+    el.innerHTML = '<div class="empty-msg">아직 저장된 운동 기록이 없습니다 <span class="en">No workout records yet</span></div>';
     return;
   }
-  countEl.textContent = historyDateFilter
-    ? `${historyDateFilter} · ${list.length}개`
-    : `전체 ${fullList.length}개`;
+  countEl.innerHTML = historyDateFilter
+    ? `${historyDateFilter} · ${list.length}개<span class="en">${list.length} record(s)</span>`
+    : `전체 ${fullList.length}개<span class="en">${fullList.length} total</span>`;
   if (list.length === 0) {
-    el.innerHTML = '<div class="empty-msg">선택한 날짜에는 기록이 없습니다</div>';
+    el.innerHTML = '<div class="empty-msg">선택한 날짜에는 기록이 없습니다 <span class="en">No records for this date</span></div>';
     return;
   }
   el.innerHTML = list.map(entry => {
@@ -1380,19 +1518,19 @@ function renderHistoryList() {
           const d = entry.logs[setNum];
           const stats = exerciseStatsText(d);
           return `<div class="log-summary-row">
-            <div class="log-summary-set">${setNum}세트</div>
+            <div class="log-summary-set">${setNum}세트<span class="en">Set ${setNum}</span></div>
             <div class="log-summary-body">
               ${stats ? `<div class="log-summary-stats">${escapeHtml(stats)}</div>` : ''}
               ${d.memo ? `<div class="log-summary-memo">${escapeHtml(d.memo)}</div>` : ''}
             </div>
           </div>`;
         }).join('');
-      detail = `<div class="log-summary" style="display:flex;margin-top:8px">${rows || '<div class="log-summary-empty">기록 없음</div>'}</div>`;
+      detail = `<div class="log-summary" style="display:flex;margin-top:8px">${rows || '<div class="log-summary-empty">기록 없음 <span class="en">No records</span></div>'}</div>`;
     }
     return `<div>
       <div class="routine-slot" onclick="toggleHistoryDetail('${entry.id}')">
-        <div class="slot-name">${escapeHtml(entry.routineName)}${entry.completed === false ? ' <span style="color:var(--danger);font-weight:400">· 중단됨</span>' : ''}</div>
-        <div class="slot-meta">${formatHistoryDate(entry.date)} · ${loggedSets}/${entry.sets}세트</div>
+        <div class="slot-name">${escapeHtml(entry.routineName)}${entry.completed === false ? ' <span style="color:var(--danger);font-weight:400">· 중단됨<span class="en">Stopped early</span></span>' : ''}</div>
+        <div class="slot-meta">${formatHistoryDate(entry.date)} · ${loggedSets}/${entry.sets}세트<span class="en">${loggedSets}/${entry.sets} sets</span></div>
         <button class="slot-delete" onclick="event.stopPropagation();deleteHistoryEntry('${entry.id}')">✕</button>
       </div>
       ${detail}
@@ -1517,7 +1655,7 @@ function endWorkout() {
   setPhaseUI('done', 0, totalSets, totalSets);
   document.getElementById('timerDisplay').textContent = '완료!';
   btnState(false);
-  document.getElementById('btnStart').textContent = '▶ 다시 시작';
+  document.getElementById('btnStart').innerHTML = bi('▶ 다시 시작', 'Restart');
   document.getElementById('btnStart').disabled = false;
   showLogCard(totalSets, { final: true });
   renderLogSummary();
@@ -1540,7 +1678,7 @@ function resumeTimer() {
 
 function stopTimer() {
   if (currentPhase && currentPhase !== 'done' && hasAnyLog()) {
-    const wantsSave = confirm('운동을 중간에 정지합니다.\n지금까지 기록한 세트 기록을 저장하시겠습니까?');
+    const wantsSave = confirm('운동을 중간에 정지합니다.\n지금까지 기록한 세트 기록을 저장하시겠습니까?\n\nStopping your workout early. Save the sets logged so far?');
     if (wantsSave) createHistoryEntry({ completed: false });
   }
   clearInterval(timer);
@@ -1548,13 +1686,13 @@ function stopTimer() {
   currentPhase = null;
   document.getElementById('phaseLabel').classList.remove('pulsing');
   btnState(false);
-  document.getElementById('btnStart').textContent = '▶ 시작';
+  document.getElementById('btnStart').innerHTML = bi('▶ 시작', 'Start');
   document.getElementById('btnStart').disabled = false;
   setPhaseUI('exercise', 0, 0, 0);
-  document.getElementById('phaseLabel').textContent = '정지됨';
+  document.getElementById('phaseLabel').innerHTML = bi('정지됨', 'Stopped');
   document.getElementById('timerDisplay').textContent = '00:00';
-  document.getElementById('nextPhase').textContent = '시작 버튼을 눌러 운동을 시작하세요';
-  document.getElementById('setBadge').textContent = '대기 중';
+  document.getElementById('nextPhase').innerHTML = bi('시작 버튼을 눌러 운동을 시작하세요', 'Press Start to begin your workout');
+  document.getElementById('setBadge').innerHTML = bi('대기 중', 'Waiting');
   ['warmup','exercise','rest','stretch'].forEach(s => {
     document.getElementById('seg-'+s).classList.remove('active');
   });
@@ -1591,7 +1729,7 @@ function saveRoutine() {
   if (routines.length > 20) routines.length = 20;
   localStorage.setItem('wt_routines', JSON.stringify(routines));
   renderRoutineList();
-  alert(`"${name}" 루틴이 저장되었습니다!`);
+  alert(`"${name}" 루틴이 저장되었습니다!\n"${name}" routine saved!`);
   driveBackup(false);
 }
 
@@ -1621,14 +1759,14 @@ function renderRoutineList() {
   const routines = getSavedRoutines();
   const el = document.getElementById('routineList');
   if (routines.length === 0) {
-    el.innerHTML = '<div class="empty-msg">저장된 루틴이 없습니다</div>';
+    el.innerHTML = '<div class="empty-msg">저장된 루틴이 없습니다 <span class="en">No saved routines</span></div>';
     return;
   }
   el.innerHTML = routines.map((r, i) => {
     const total = r.warmup + (r.exercise + r.rest) * r.sets - r.rest + r.stretch;
     return `<div class="routine-slot" onclick="loadRoutine(${i})">
       <div class="slot-name">${r.name}</div>
-      <div class="slot-meta">${r.sets}세트 · ${formatTime(Math.max(0,total))}</div>
+      <div class="slot-meta">${r.sets}세트 <span class="en">${r.sets} sets</span> · ${formatTime(Math.max(0,total))}</div>
       <button class="slot-delete" onclick="event.stopPropagation();deleteRoutine(${i})">✕</button>
     </div>`;
   }).join('');
@@ -1642,6 +1780,12 @@ function toggleRoutineList() {
 }
 
 // === HELP MODAL ===
+function toggleBlockHelp(id) {
+  const box = document.getElementById('bh-' + id);
+  if (!box) return;
+  box.classList.toggle('show');
+}
+
 function openHelp() {
   document.getElementById('helpOverlay').classList.add('show');
 }
@@ -1721,7 +1865,7 @@ async function toggleGoogleAuth() {
     return;
   }
   if (!isGoogleConfigured()) {
-    alert('아직 Google 로그인이 설정되지 않았어요.\n개발자가 Google Cloud Console에서 발급받은 클라이언트 ID를 코드에 등록해야 사용할 수 있습니다.');
+    alert('아직 Google 로그인이 설정되지 않았어요.\n개발자가 Google Cloud Console에서 발급받은 클라이언트 ID를 코드에 등록해야 사용할 수 있습니다.\n\nGoogle sign-in isn\'t configured yet. The developer needs to register a Client ID from Google Cloud Console first.');
     return;
   }
   try {
@@ -1734,7 +1878,7 @@ async function toggleGoogleAuth() {
     await driveBackup(false);
   } catch (e) {
     console.error(e);
-    alert('Google 로그인에 실패했어요. 다시 시도해주세요.');
+    alert('Google 로그인에 실패했어요. 다시 시도해주세요.\nGoogle sign-in failed. Please try again.');
   }
 }
 
@@ -1795,16 +1939,18 @@ function updateGDriveUI() {
   const signedIn = !!gDriveAccessToken;
 
   dot.classList.toggle('on', signedIn);
-  authBtn.textContent = signedIn ? '🔓 로그아웃' : '🔐 Google로 로그인';
+  authBtn.innerHTML = signedIn
+    ? '🔓 로그아웃<span class="en">Sign out</span>'
+    : '🔐 Google로 로그인<span class="en">Sign in with Google</span>';
   backupBtn.disabled = !signedIn || gDriveBusy;
   restoreBtn.disabled = !signedIn || gDriveBusy;
 
   if (signedIn) {
     statusText.innerHTML = gDriveUserEmail
-      ? `<span class="gdrive-email">${escapeHtml(gDriveUserEmail)}</span>로 연결됨`
-      : '구글 계정에 연결됨';
+      ? `<span class="gdrive-email">${escapeHtml(gDriveUserEmail)}</span>로 연결됨<span class="en" style="display:block">Connected as ${escapeHtml(gDriveUserEmail)}</span>`
+      : '구글 계정에 연결됨<span class="en" style="display:block">Connected to Google account</span>';
   } else {
-    statusText.textContent = '로그인하면 루틴/기록이 이 구글 계정에 백업돼요';
+    statusText.innerHTML = '로그인하면 루틴/기록이 이 구글 계정에 백업돼요<span class="en" style="display:block">Sign in to back up your routines/history to this account</span>';
   }
 }
 
@@ -1834,7 +1980,7 @@ function mergeById(localArr, remoteArr) {
 
 async function driveBackup(manual) {
   if (!gDriveAccessToken) {
-    if (manual) alert('먼저 Google로 로그인해주세요.');
+    if (manual) alert('먼저 Google로 로그인해주세요.\nPlease sign in with Google first.');
     return;
   }
   if (gDriveBusy) return;
@@ -1873,10 +2019,10 @@ async function driveBackup(manual) {
     }
     if (!res.ok) throw new Error('drive backup failed: ' + res.status);
     setGdriveSyncTime('마지막 백업: ' + formatHistoryDate(new Date().toISOString()));
-    if (manual) alert('구글 드라이브에 백업했어요!');
+    if (manual) alert('구글 드라이브에 백업했어요!\nBacked up to Google Drive!');
   } catch (e) {
     console.error(e);
-    if (manual) alert('백업 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.');
+    if (manual) alert('백업 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.\nSomething went wrong backing up. Please try again shortly.');
   } finally {
     gDriveBusy = false;
     updateGDriveUI();
@@ -1885,7 +2031,7 @@ async function driveBackup(manual) {
 
 async function driveRestore(manual) {
   if (!gDriveAccessToken) {
-    if (manual) alert('먼저 Google로 로그인해주세요.');
+    if (manual) alert('먼저 Google로 로그인해주세요.\nPlease sign in with Google first.');
     return;
   }
   if (gDriveBusy) return;
@@ -1895,7 +2041,7 @@ async function driveRestore(manual) {
     const token = await ensureFreshToken();
     const existing = await driveFindBackupFileId();
     if (!existing) {
-      if (manual) alert('구글 드라이브에 저장된 백업이 아직 없어요. 먼저 "지금 백업"을 눌러주세요.');
+      if (manual) alert('구글 드라이브에 저장된 백업이 아직 없어요. 먼저 "지금 백업"을 눌러주세요.\nNo backup found on Google Drive yet. Please tap "Back Up Now" first.');
       return;
     }
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${existing.id}?alt=media`, {
@@ -1912,10 +2058,10 @@ async function driveRestore(manual) {
     renderRoutineList();
     renderHistoryList();
     setGdriveSyncTime('마지막 복원: ' + formatHistoryDate(new Date().toISOString()));
-    if (manual) alert('구글 드라이브 기록을 불러와서 합쳤어요!');
+    if (manual) alert('구글 드라이브 기록을 불러와서 합쳤어요!\nRestored and merged your data from Google Drive!');
   } catch (e) {
     console.error(e);
-    if (manual) alert('복원 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.');
+    if (manual) alert('복원 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.\nSomething went wrong restoring. Please try again shortly.');
   } finally {
     gDriveBusy = false;
     updateGDriveUI();
