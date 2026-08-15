@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260815-4'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260815-5'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -966,6 +966,8 @@
     justify-content: center;
     text-align: center;
     min-height: 0;
+    min-width: 0;
+    overflow: hidden;
     border: none;
     background: transparent;
     padding: 0;
@@ -1044,7 +1046,18 @@
     .timer-fullscreen.has-log #log-card .log-exercise-rows,
     .timer-fullscreen.has-log #log-card .log-exercise-row,
     .timer-fullscreen.has-log #log-card .log-exercise-header { min-width: 0; }
-  }
+
+    /* 세트 기록 카드와 화면을 반씩 나눠 쓸 때는 숫자가 vw(전체 화면 폭) 기준이라
+       좁아진 칸을 넘쳤던 문제 — 이 상태에서만 훨씬 작은 폭 기준으로 다시 계산 */
+    .timer-fullscreen.has-log #timer-card .timer-display {
+      font-size: clamp(34px, 11vw, 88px);
+    }
+    .timer-fullscreen.has-log #timer-card .phase-label {
+      font-size: clamp(14px, 3.6vw, 22px);
+    }
+    .timer-fullscreen.has-log #timer-card .set-badge {
+      font-size: clamp(12px, 3vw, 15px);
+    }
   }
 
   /* 탭하면 나오는 조작 버튼: 문서 흐름 밖(하단 고정)에 두어 타이머 정렬에 영향을 주지 않고,
@@ -2224,36 +2237,41 @@ function previewSound() {
 }
 
 // 복싱 종 같은 "땡!!" 소리 — 타격 노이즈 + 인하모닉 배음(종 특유의 울림)을 합성
+// 복싱 종 같은 "땡!!" 소리 — 높고 쨍한 타격 노이즈 + 밝은 배음(진짜 벨 특유의 쨍한 느낌)
 function playBell(strength) {
   try {
     if (!audioCtx) audioCtx = new AudioContext();
     const now = audioCtx.currentTime;
     const s = strength == null ? 1 : strength;
 
-    // 타격 순간의 짧은 노이즈(금속을 때리는 느낌)
-    const bufSize = Math.floor(audioCtx.sampleRate * 0.025);
+    // 타격 순간의 쨍한 고음 노이즈(하이패스로 걸러서 더 금속성 있게)
+    const bufSize = Math.floor(audioCtx.sampleRate * 0.02);
     const buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
     const noise = audioCtx.createBufferSource();
     noise.buffer = buffer;
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = 'highpass';
+    noiseFilter.frequency.value = 2200;
     const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.35 * s, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
-    noise.connect(noiseGain);
+    noiseGain.gain.setValueAtTime(0.55 * s, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
     noiseGain.connect(audioCtx.destination);
     noise.start(now);
 
-    // 종 몸통의 울림 — 정수배가 아닌 인하모닉 배음을 겹쳐서 금속성 울림을 표현
-    const partials = [1, 2.4, 3.8, 5.4];
-    const base = 480;
+    // 실제 복싱 벨처럼 높고 밝은 인하모닉 배음 (낮은 종/징 소리가 아니라 쨍하고 높은 소리)
+    const partials = [1, 2.0, 2.76, 4.07];
+    const base = 1000;
     partials.forEach((mult, i) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
       osc.frequency.value = base * mult;
-      const vol = (0.45 / (i + 1)) * s;
-      const decay = Math.max(0.35, 1.3 - i * 0.22) * (0.6 + 0.4 * s);
+      const vol = (0.55 / (i + 1)) * s;
+      const decay = Math.max(0.3, 1.1 - i * 0.18) * (0.6 + 0.4 * s);
       gain.gain.setValueAtTime(vol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
       osc.connect(gain);
@@ -2264,45 +2282,46 @@ function playBell(strength) {
   } catch (e) {}
 }
 
+// 전환 순간(4번째 소리)은 카운트다운(1~3번째)보다 확실히 크고 화려하게 — "바뀌었다"는 게 분명히 느껴지도록
 function beepPhaseChange() {
   const t = getSoundType();
   if (t === 'bell') {
-    // 복싱 종: "땡!!" 한 번 세게 침
-    playBell(1);
+    // 복싱 종: 카운트다운보다 훨씬 세게 "땡!!"
+    playBell(1.4);
   } else if (t === 'whistle') {
-    // 스포츠 휘슬: 높은 음이 살짝 흔들리며 두 번
-    playSweep(1400, 2200, 0.3, 0.45);
-    setTimeout(() => playSweep(1400, 2200, 0.3, 0.45), 380);
+    playSweep(1300, 2500, 0.32, 0.65);
+    setTimeout(() => playSweep(1300, 2500, 0.32, 0.65), 300);
   } else if (t === 'chime') {
-    // 부드러운 차임벨: 두 음이 상승
-    playTone(523.25, 0.35, 0.4, 'sine');
-    setTimeout(() => playTone(783.99, 0.45, 0.4, 'sine'), 150);
+    playTone(523.25, 0.3, 0.55, 'sine');
+    setTimeout(() => playTone(659.25, 0.3, 0.55, 'sine'), 130);
+    setTimeout(() => playTone(1046.5, 0.45, 0.6, 'sine'), 260);
   } else {
-    beep(660, 0.15, 0.45);
-    setTimeout(() => beep(880, 0.22, 0.45), 180);
+    beep(660, 0.14, 0.55);
+    setTimeout(() => beep(880, 0.16, 0.55), 140);
+    setTimeout(() => beep(1108.7, 0.28, 0.6), 280);
   }
 }
 
-// 단계가 바뀌기 3초 전부터 "삐, 삐, 삐" 하고 또렷하게 미리 알려줌 (전환 순간엔 beepPhaseChange가 더 크게 울림)
+// 단계가 바뀌기 3초 전부터 "삐, 삐, 삐" 하고 미리 알려줌 — 전환 순간의 beepPhaseChange보다는 확실히 약하게
 function beepCountdown() {
   const t = getSoundType();
-  if (t === 'bell') playBell(0.4);
-  else if (t === 'whistle') playTone(1800, 0.14, 0.4, 'square');
-  else if (t === 'chime') playTone(659.25, 0.15, 0.4, 'sine');
-  else beep(440, 0.14, 0.4);
+  if (t === 'bell') playBell(0.35);
+  else if (t === 'whistle') playTone(1800, 0.12, 0.3, 'square');
+  else if (t === 'chime') playTone(659.25, 0.12, 0.28, 'sine');
+  else beep(440, 0.12, 0.3);
 }
 
 function beepDone() {
   const t = getSoundType();
   if (t === 'bell') {
-    [0, 350, 700].forEach(d => setTimeout(() => playBell(1), d));
+    [0, 350, 700].forEach(d => setTimeout(() => playBell(1.4), d));
   } else if (t === 'whistle') {
-    [0, 300, 600].forEach(d => setTimeout(() => playSweep(1400, 2400, 0.3, 0.45), d));
+    [0, 300, 600].forEach(d => setTimeout(() => playSweep(1300, 2500, 0.32, 0.6), d));
   } else if (t === 'chime') {
-    [0, 200, 400].forEach((d, i) => setTimeout(() => playTone([523.25, 659.25, 783.99][i], 0.4, 0.4, 'sine'), d));
+    [0, 200, 400].forEach((d, i) => setTimeout(() => playTone([523.25, 659.25, 783.99][i], 0.4, 0.5, 'sine'), d));
   } else {
-    [0, 200, 400].forEach(d => setTimeout(() => beep(880, 0.15, 0.5), d));
-    setTimeout(() => beep(1100, 0.4, 0.5), 700);
+    [0, 200, 400].forEach(d => setTimeout(() => beep(880, 0.15, 0.55), d));
+    setTimeout(() => beep(1100, 0.4, 0.55), 700);
   }
 }
 
@@ -2964,7 +2983,4 @@ applyThemeUI(document.documentElement.getAttribute('data-theme') === 'light' ? '
 
 // Init
 calcTotal();
-try { document.getElementById('soundType').value = getSoundType(); } catch (e) {}
-</script>
-</body>
-</html>
+try { document.getElementById('
