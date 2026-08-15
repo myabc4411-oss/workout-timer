@@ -2984,4 +2984,23 @@ function applyThemeUI(theme) {
   if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'light' ? '#f5f5f7' : '#0a0a0a');
-  const colorScheme = document.querySelector('met
+  const colorScheme = document.querySelector('meta[name="color-scheme"]');
+  if (colorScheme) colorScheme.setAttribute('content', theme === 'light' ? 'light' : 'dark');
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('wt_theme', next); } catch (e) {}
+  applyThemeUI(next);
+}
+
+applyThemeUI(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+
+// Init
+calcTotal();
+try { document.getElementById('soundType').value = getSoundType(); } catch (e) {}
+</script>
+</body>
+</html>
