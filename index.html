@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260815-2'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260815-4'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -776,9 +776,10 @@
 
   .log-exercise-row {
     display: grid;
-    grid-template-columns: 1fr 80px 80px;
+    grid-template-columns: minmax(0, 1fr) minmax(48px, 80px) minmax(48px, 80px);
     align-items: center;
     gap: 8px;
+    min-width: 0;
   }
 
   .log-exercise-name {
@@ -806,13 +807,14 @@
 
   .log-exercise-header {
     display: grid;
-    grid-template-columns: 1fr 80px 80px;
+    grid-template-columns: minmax(0, 1fr) minmax(48px, 80px) minmax(48px, 80px);
     gap: 8px;
     font-size: 10px;
     color: var(--text-dim);
     letter-spacing: 0.5px;
     text-transform: uppercase;
     padding: 0 0 2px;
+    min-width: 0;
   }
   .log-exercise-header span:not(:first-child) { text-align: center; }
   .log-exercise-header .en {
@@ -937,6 +939,7 @@
   }
   .fs-minimize-btn:active { border-color: var(--accent); color: var(--accent); }
 
+  /* fs-body에는 timer-card 하나만 남기는 게 기본값 — 세트 기록 카드가 떠 있을 때만 fs-side가 끼어듦 */
   .fs-body {
     flex: 1;
     display: flex;
@@ -945,9 +948,18 @@
     min-height: 0;
   }
 
-  /* 타이머 카드: 숫자를 화면 중앙에, 세트는 위쪽 작게, 단계 이름은 아래쪽 은은하게 */
+  .timer-fullscreen .fs-side { display: none; }
+  .timer-fullscreen.has-log .fs-side {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  /* 타이머 카드: 남는 공간 전체를 혼자 차지하며 진짜 정중앙 정렬 */
   .timer-fullscreen #timer-card {
     flex: 1;
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -957,6 +969,7 @@
     border: none;
     background: transparent;
     padding: 0;
+    margin: 0 auto;
     cursor: pointer;
   }
 
@@ -982,9 +995,15 @@
     color: var(--text-muted);
   }
 
-  .timer-fullscreen #timer-card .timer-wrap { order: 2; padding: 0; }
+  .timer-fullscreen #timer-card .timer-wrap {
+    order: 2;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+  }
   .timer-fullscreen #timer-card .timer-display {
     font-size: clamp(72px, 26vw, 190px);
+    display: inline-block;
   }
 
   .timer-fullscreen #timer-card .phase-label {
@@ -993,28 +1012,15 @@
     letter-spacing: 4px;
     margin: 10px 0 0;
     opacity: 0.6;
+    text-align: center;
+    width: 100%;
   }
 
-  .timer-fullscreen #timer-card .log-summary { order: 4; margin-top: 16px; text-align: left; }
-
-  .timer-fullscreen #log-card,
-  .timer-fullscreen #timerControls {
-    flex-shrink: 0;
-  }
-
-  /* 조작 버튼(일시정지/재시작/정지)도 탭하기 전엔 숨김 */
-  .timer-fullscreen #timerControls {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease;
-  }
-  .timer-fullscreen.controls-visible #timerControls {
-    opacity: 1;
-    pointer-events: auto;
-  }
+  .timer-fullscreen #timer-card .log-summary { order: 4; margin-top: 16px; text-align: left; width: 100%; }
 
   /* 세트 기록 카드: 꼭 필요한 입력만 남기고 제목/안내문구 등은 생략 */
   .timer-fullscreen #log-card {
+    flex-shrink: 0;
     max-height: 42vh;
     overflow-y: auto;
   }
@@ -1024,21 +1030,50 @@
     display: none;
   }
 
-  /* landscape phones: put timer on one side, log/controls on the other */
+  /* landscape phones: 세트 기록 카드가 떠 있을 때만 좌우로 분할, 그 외엔 타이머가 화면 전체를 씀 */
   @media (orientation: landscape) {
-    .fs-body { flex-direction: row; align-items: stretch; }
-    .timer-fullscreen #timer-card { flex: 1.1; }
-    .timer-fullscreen .fs-side {
+    .timer-fullscreen.has-log .fs-body { flex-direction: row; align-items: stretch; }
+    .timer-fullscreen.has-log #timer-card { flex: 1.1; min-width: 0; }
+    .timer-fullscreen.has-log .fs-side {
       flex: 1;
-      display: flex;
-      flex-direction: column;
+      min-width: 0;
       justify-content: center;
-      gap: 10px;
-      min-height: 0;
       overflow-y: auto;
     }
-    .timer-fullscreen #log-card { max-height: none; }
+    .timer-fullscreen.has-log #log-card { max-height: none; min-width: 0; }
+    .timer-fullscreen.has-log #log-card .log-exercise-rows,
+    .timer-fullscreen.has-log #log-card .log-exercise-row,
+    .timer-fullscreen.has-log #log-card .log-exercise-header { min-width: 0; }
   }
+  }
+
+  /* 탭하면 나오는 조작 버튼: 문서 흐름 밖(하단 고정)에 두어 타이머 정렬에 영향을 주지 않고,
+     Pause/Resume/Stop을 가로 한 줄로 배치 */
+  .fs-controls-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    z-index: 520;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .timer-fullscreen.controls-visible .fs-controls-bar {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .timer-fullscreen #timerControls {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+  }
+  .timer-fullscreen #timerControls .btn { flex: 1; }
+  .timer-fullscreen #btnStart { display: none; }
 
   .fs-restore-btn {
     display: none;
@@ -1130,6 +1165,7 @@
   <div class="fs-body" id="fsBody">
     <div class="fs-side" id="fsSide"></div>
   </div>
+  <div class="fs-controls-bar" id="fsControlsBar"></div>
 </div>
 
 <button class="fs-restore-btn" id="btnRestoreFullscreen" onclick="enterFullscreenTimer()">⤢ 전체화면으로<span class="en" style="display:none"></span></button>
@@ -1449,8 +1485,38 @@ const HISTORY_KEY = 'wt_history';
 
 // === FULLSCREEN TIMER STATE ===
 let fsOriginalParents = null; // [{el, parent, next}] — 전체화면 진입 전 원래 위치 기억
-let fsExitViaBack = false;    // 안드로이드 뒤로가기로 나간 경우인지 구분
 let fsControlsHideTimer = null;
+
+// === 뒤로가기(안드로이드 back) 통합 처리 ===
+// 전체화면 타이머, 도움말, 루틴/기록 목록, 기록 수정 등 "열려있는 화면/모드"를 열 때마다
+// 여기에 하나씩 쌓아두고, 뒤로가기를 누르면 앱이 꺼지는 대신 가장 최근에 연 것부터
+// 하나씩 닫히도록(popstate) 합니다. X버튼 등으로 직접 닫을 때도 여기서 같이 정리해줘야
+// 브라우저 히스토리와 어긋나지 않습니다.
+let wtUiStack = [];
+let wtSuppressNextPopstate = 0;
+
+function wtPushBack(id, onBack) {
+  wtUiStack.push({ id, onBack });
+  try { history.pushState({ wtUi: id }, ''); } catch (e) {}
+}
+
+// 뒤로가기가 아니라 사용자가 화면 안의 버튼(닫기/취소/토글 등)으로 직접 닫았을 때 호출
+function wtDismiss(id) {
+  const idx = wtUiStack.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  wtUiStack.splice(idx, 1);
+  wtSuppressNextPopstate++;
+  try { history.back(); } catch (e) {}
+}
+
+window.addEventListener('popstate', function () {
+  if (wtSuppressNextPopstate > 0) {
+    wtSuppressNextPopstate--;
+    return; // wtDismiss()가 스스로 발생시킨 popstate — 이미 처리됨
+  }
+  const top = wtUiStack.pop();
+  if (top) top.onBack();
+});
 
 // === SETTINGS HELPERS ===
 const getVal = id => parseInt(document.getElementById(id).value) || 0;
@@ -1603,11 +1669,13 @@ function showLogCard(setNum, opts) {
   document.getElementById('logCardTitle').innerHTML = bi(`${setNum}세트 기록${isFinal ? ' (마지막 세트)' : ''}`, `Set ${setNum} Log${isFinal ? ' (Final Set)' : ''}`);
   document.getElementById('log-card').classList.add('show');
   document.getElementById('btnFinalLogContinue').style.display = (opts && opts.requireSave) ? 'block' : 'none';
+  document.getElementById('timerFullscreen').classList.add('has-log');
 }
 
 function hideLogCard() {
   currentLogSet = null;
   document.getElementById('log-card').classList.remove('show');
+  document.getElementById('timerFullscreen').classList.remove('has-log');
 }
 
 function saveCurrentLog() {
@@ -1825,9 +1893,32 @@ function updateCurrentHistoryEntry() {
 
 function toggleHistoryList() {
   const wrap = document.getElementById('historyListWrap');
-  const isHidden = wrap.style.display === 'none';
-  wrap.style.display = isHidden ? 'block' : 'none';
-  if (isHidden) renderHistoryList();
+  const isHidden = wrap.style.display === 'none' || !wrap.style.display;
+  if (isHidden) {
+    wrap.style.display = 'block';
+    renderHistoryList();
+    wtPushBack('historyList', closeHistoryListUI);
+  } else {
+    if (editingHistoryId) { editingHistoryId = null; wtDismiss('historyEdit'); }
+    closeHistoryListUI();
+    wtDismiss('historyList');
+  }
+}
+
+function closeHistoryListUI() {
+  document.getElementById('historyListWrap').style.display = 'none';
+  expandedHistoryId = null;
+  editingHistoryId = null;
+}
+
+// 다른 동작(예: 이어하기)으로 인해 프로그램적으로 목록을 닫아야 할 때 사용
+function closeHistoryListIfOpen() {
+  const wrap = document.getElementById('historyListWrap');
+  if (wrap.style.display !== 'none' && wrap.style.display !== '') {
+    if (editingHistoryId) { editingHistoryId = null; wtDismiss('historyEdit'); }
+    closeHistoryListUI();
+    wtDismiss('historyList');
+  }
 }
 
 function formatHistoryDate(iso) {
@@ -1952,17 +2043,22 @@ function renderHistoryList() {
 }
 
 function toggleHistoryDetail(id) {
-  if (expandedHistoryId !== id) editingHistoryId = null;
+  if (expandedHistoryId !== id && editingHistoryId) {
+    editingHistoryId = null;
+    wtDismiss('historyEdit');
+  }
   expandedHistoryId = expandedHistoryId === id ? null : id;
   renderHistoryList();
 }
 
 function deleteHistoryEntry(id) {
+  const wasEditing = editingHistoryId === id;
   const list = getHistoryList().filter(e => e.id !== id);
   writeHistoryList(list);
   if (expandedHistoryId === id) expandedHistoryId = null;
   if (editingHistoryId === id) editingHistoryId = null;
   renderHistoryList();
+  if (wasEditing) wtDismiss('historyEdit');
 }
 
 // 기록에 저장된 종목 이름 목록 — routineSettings가 있으면 그걸, 없으면(예전 기록) 로그에 남은 종목 이름으로 유추
@@ -2002,7 +2098,7 @@ function resumeWorkout(id) {
   setLogs = { ...(entry.logs || {}) };
   currentHistoryId = entry.id;
 
-  document.getElementById('historyListWrap').style.display = 'none';
+  closeHistoryListIfOpen();
   startTimer(entry.stoppedAtSet && entry.stoppedAtSet > 0 ? entry.stoppedAtSet : 1);
 }
 
@@ -2015,11 +2111,16 @@ function startEditHistory(id) {
   editingHistoryId = id;
   expandedHistoryId = id;
   renderHistoryList();
+  wtPushBack('historyEdit', function () {
+    editingHistoryId = null;
+    renderHistoryList();
+  });
 }
 
 function cancelEditHistory() {
   editingHistoryId = null;
   renderHistoryList();
+  wtDismiss('historyEdit');
 }
 
 function saveEditHistory(id) {
@@ -2052,6 +2153,7 @@ function saveEditHistory(id) {
   writeHistoryList(list);
   editingHistoryId = null;
   renderHistoryList();
+  wtDismiss('historyEdit');
   if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
 }
 
@@ -2121,45 +2223,79 @@ function previewSound() {
   beepPhaseChange();
 }
 
+// 복싱 종 같은 "땡!!" 소리 — 타격 노이즈 + 인하모닉 배음(종 특유의 울림)을 합성
+function playBell(strength) {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const now = audioCtx.currentTime;
+    const s = strength == null ? 1 : strength;
+
+    // 타격 순간의 짧은 노이즈(금속을 때리는 느낌)
+    const bufSize = Math.floor(audioCtx.sampleRate * 0.025);
+    const buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.35 * s, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+    noise.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+    noise.start(now);
+
+    // 종 몸통의 울림 — 정수배가 아닌 인하모닉 배음을 겹쳐서 금속성 울림을 표현
+    const partials = [1, 2.4, 3.8, 5.4];
+    const base = 480;
+    partials.forEach((mult, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = base * mult;
+      const vol = (0.45 / (i + 1)) * s;
+      const decay = Math.max(0.35, 1.3 - i * 0.22) * (0.6 + 0.4 * s);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + decay + 0.05);
+    });
+  } catch (e) {}
+}
+
 function beepPhaseChange() {
   const t = getSoundType();
   if (t === 'bell') {
-    // 복싱 종: 낮은 금속성 톤이 길게 울리다 사라짐 (두 번 타격)
-    playTone(300, 1.2, 0.5, 'triangle');
-    playTone(600, 1.0, 0.2, 'triangle');
-    setTimeout(() => {
-      playTone(300, 0.9, 0.35, 'triangle');
-      playTone(600, 0.7, 0.15, 'triangle');
-    }, 160);
+    // 복싱 종: "땡!!" 한 번 세게 침
+    playBell(1);
   } else if (t === 'whistle') {
     // 스포츠 휘슬: 높은 음이 살짝 흔들리며 두 번
-    playSweep(1400, 2200, 0.3, 0.4);
-    setTimeout(() => playSweep(1400, 2200, 0.3, 0.4), 380);
+    playSweep(1400, 2200, 0.3, 0.45);
+    setTimeout(() => playSweep(1400, 2200, 0.3, 0.45), 380);
   } else if (t === 'chime') {
     // 부드러운 차임벨: 두 음이 상승
-    playTone(523.25, 0.35, 0.35, 'sine');
-    setTimeout(() => playTone(783.99, 0.45, 0.35, 'sine'), 150);
+    playTone(523.25, 0.35, 0.4, 'sine');
+    setTimeout(() => playTone(783.99, 0.45, 0.4, 'sine'), 150);
   } else {
-    beep(660, 0.15, 0.4);
-    setTimeout(() => beep(880, 0.2, 0.4), 180);
+    beep(660, 0.15, 0.45);
+    setTimeout(() => beep(880, 0.22, 0.45), 180);
   }
 }
 
+// 단계가 바뀌기 3초 전부터 "삐, 삐, 삐" 하고 또렷하게 미리 알려줌 (전환 순간엔 beepPhaseChange가 더 크게 울림)
 function beepCountdown() {
   const t = getSoundType();
-  if (t === 'bell') playTone(500, 0.08, 0.25, 'triangle');
-  else if (t === 'whistle') playTone(1800, 0.06, 0.2, 'square');
-  else if (t === 'chime') playTone(659.25, 0.08, 0.2, 'sine');
-  else beep(440, 0.08, 0.2);
+  if (t === 'bell') playBell(0.4);
+  else if (t === 'whistle') playTone(1800, 0.14, 0.4, 'square');
+  else if (t === 'chime') playTone(659.25, 0.15, 0.4, 'sine');
+  else beep(440, 0.14, 0.4);
 }
 
 function beepDone() {
   const t = getSoundType();
   if (t === 'bell') {
-    [0, 250, 500].forEach(d => setTimeout(() => {
-      playTone(300, 1.0, 0.5, 'triangle');
-      playTone(600, 0.8, 0.2, 'triangle');
-    }, d));
+    [0, 350, 700].forEach(d => setTimeout(() => playBell(1), d));
   } else if (t === 'whistle') {
     [0, 300, 600].forEach(d => setTimeout(() => playSweep(1400, 2400, 0.3, 0.45), d));
   } else if (t === 'chime') {
@@ -2182,6 +2318,7 @@ function enterFullscreenTimer() {
   const copyBtn = document.getElementById('btnCopyLog');
   const fsBody = document.getElementById('fsBody');
   const fsSide = document.getElementById('fsSide');
+  const fsControlsBar = document.getElementById('fsControlsBar');
 
   fsOriginalParents = [timerCard, logCard, controls, copyBtn].map(el => ({
     el, parent: el.parentNode, next: el.nextSibling
@@ -2189,8 +2326,8 @@ function enterFullscreenTimer() {
 
   fsBody.insertBefore(timerCard, fsSide);
   fsSide.appendChild(logCard);
-  fsSide.appendChild(controls);
-  fsSide.appendChild(copyBtn);
+  fsControlsBar.appendChild(copyBtn);
+  fsControlsBar.appendChild(controls);
 
   document.getElementById('timerFullscreen').classList.add('show');
   document.body.classList.add('workout-fullscreen');
@@ -2198,36 +2335,29 @@ function enterFullscreenTimer() {
   showFsControls(false);
 
   // 갤럭시 등 안드로이드에서 뒤로가기(제스처/버튼)를 눌렀을 때 앱이 통째로 꺼지지 않고
-  // 전체화면 타이머만 빠져나가도록, 진입 시 히스토리 항목을 하나 쌓아둡니다.
-  try { history.pushState({ wtFullscreen: true }, ''); } catch (e) {}
-  window.addEventListener('popstate', handleFsBack);
+  // 전체화면 타이머만 빠져나가도록 스택에 등록
+  wtPushBack('fsTimer', function () {
+    restoreFsDom(!!(currentPhase && currentPhase !== 'done'));
+  });
 }
 
 function exitFullscreenTimer(showRestore) {
+  if (!fsOriginalParents) return;
+  restoreFsDom(showRestore);
+  wtDismiss('fsTimer');
+}
+
+function restoreFsDom(showRestore) {
   if (!fsOriginalParents) return;
   fsOriginalParents.forEach(o => {
     if (o.next && o.next.parentNode === o.parent) o.parent.insertBefore(o.el, o.next);
     else o.parent.appendChild(o.el);
   });
   fsOriginalParents = null;
-  document.getElementById('timerFullscreen').classList.remove('show', 'controls-visible');
+  document.getElementById('timerFullscreen').classList.remove('show', 'controls-visible', 'has-log');
   document.body.classList.remove('workout-fullscreen');
   document.getElementById('btnRestoreFullscreen').classList.toggle('show', !!showRestore);
   clearTimeout(fsControlsHideTimer);
-  window.removeEventListener('popstate', handleFsBack);
-
-  // 뒤로가기로 나온 게 아니라 최소화/정지 버튼 등으로 직접 나온 경우엔,
-  // 진입할 때 쌓아뒀던 히스토리 항목을 우리가 대신 정리해줌
-  if (!fsExitViaBack && history.state && history.state.wtFullscreen) {
-    try { history.back(); } catch (e) {}
-  }
-  fsExitViaBack = false;
-}
-
-function handleFsBack() {
-  if (!fsOriginalParents) return;
-  fsExitViaBack = true;
-  exitFullscreenTimer(!!(currentPhase && currentPhase !== 'done'));
 }
 
 function handleFsMinimizeClick() {
@@ -2498,9 +2628,19 @@ function renderRoutineList() {
 
 function toggleRoutineList() {
   const wrap = document.getElementById('routineListWrap');
-  const isHidden = wrap.style.display === 'none';
-  wrap.style.display = isHidden ? 'block' : 'none';
-  if (isHidden) renderRoutineList();
+  const isHidden = wrap.style.display === 'none' || !wrap.style.display;
+  if (isHidden) {
+    wrap.style.display = 'block';
+    renderRoutineList();
+    wtPushBack('routineList', closeRoutineListUI);
+  } else {
+    closeRoutineListUI();
+    wtDismiss('routineList');
+  }
+}
+
+function closeRoutineListUI() {
+  document.getElementById('routineListWrap').style.display = 'none';
 }
 
 // === HELP MODAL ===
@@ -2512,10 +2652,17 @@ function toggleBlockHelp(id) {
 
 function openHelp() {
   document.getElementById('helpOverlay').classList.add('show');
+  wtPushBack('help', closeHelpUI);
+}
+
+function closeHelpUI() {
+  document.getElementById('helpOverlay').classList.remove('show');
 }
 
 function closeHelp() {
-  document.getElementById('helpOverlay').classList.remove('show');
+  if (!document.getElementById('helpOverlay').classList.contains('show')) return;
+  closeHelpUI();
+  wtDismiss('help');
 }
 
 function closeHelpOnOverlay(evt) {
