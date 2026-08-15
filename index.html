@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260815-6'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260815-7'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -776,7 +776,7 @@
 
   .log-exercise-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(48px, 80px) minmax(48px, 80px);
+    grid-template-columns: minmax(0, 1fr) minmax(68px, 100px) minmax(68px, 100px);
     align-items: center;
     gap: 8px;
     min-width: 0;
@@ -791,23 +791,56 @@
     white-space: nowrap;
   }
 
+  .log-value-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
   .log-exercise-row input {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
     font-family: 'Roboto Mono', monospace;
-    padding: 8px 8px;
+    padding: 8px 6px;
     outline: none;
     text-align: center;
     width: 100%;
+    min-width: 0;
   }
 
   .log-exercise-row input:focus { border-color: var(--accent2); }
 
+  .lock-btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  .lock-btn.locked {
+    background: rgba(0, 229, 160, 0.18);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   .log-exercise-header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(48px, 80px) minmax(48px, 80px);
+    grid-template-columns: minmax(0, 1fr) minmax(68px, 100px) minmax(68px, 100px);
     gap: 8px;
     font-size: 10px;
     color: var(--text-dim);
@@ -1280,8 +1313,8 @@
       <span class="log-saved-hint">자동 저장됨 <span class="en">Auto-saved</span></span>
     </div>
     <div class="block-help-box" id="bh-log">
-      휴식 시간이 되면 이 카드가 자동으로 나타나요. 운동 종목별로 무게(kg)·횟수를 적고, 아래 메모칸에 컨디션을 남기면 입력하는 즉시 저장돼요.
-      <span class="en">This card appears automatically during rest. Enter weight(kg)/reps per exercise and jot notes below — everything saves as you type.</span>
+      휴식 시간이 되면 이 카드가 자동으로 나타나요. 운동 종목별로 무게(kg)·횟수를 적고, 아래 메모칸에 컨디션을 남기면 입력하는 즉시 저장돼요. 입력칸 옆 🔓 버튼을 누르면 그 값이 고정되어 다음 세트에도 자동으로 이어져요 — 무게만 고정하고 횟수만 늘려가거나, 반대로도 가능해요.
+      <span class="en">This card appears automatically during rest. Enter weight(kg)/reps per exercise and jot notes below — everything saves as you type. Tap the 🔓 next to a field to lock it so it carries over to the next set — lock just the weight, just the reps, or both.</span>
     </div>
     <div id="logExerciseRows" class="log-exercise-rows"></div>
     <div class="log-field-group">
@@ -1499,6 +1532,8 @@ let totalSets = 1;
 
 // === SET LOG STATE ===
 let setLogs = {}; // { [setNumber]: { weight, reps, memo } }
+let lockedFields = {}; // { [exerciseName]: { weight: bool, reps: bool } } — 세트마다 값을 새로 안 치고 이어쓰기
+let lockedValues = {}; // { [exerciseName]: { weight: '20', reps: '12' } } — 고정된 필드의 최신 값
 let currentLogSet = null;
 let currentHistoryId = null;
 let expandedHistoryId = null;
@@ -1678,10 +1713,20 @@ function showLogCard(setNum, opts) {
     const header = `<div class="log-exercise-header"><span>종목<span class="en" style="display:block">Exercise</span></span><span>무게(kg)<span class="en" style="display:block">Weight(kg)</span></span><span>횟수<span class="en" style="display:block">Reps</span></span></div>`;
     const rows = names.map((name, i) => {
       const v = data[name] || {};
+      const lf = lockedFields[name] || {};
+      const lv = lockedValues[name] || {};
+      const weightVal = v.weight || (lf.weight ? lv.weight : '') || '';
+      const repsVal = v.reps || (lf.reps ? lv.reps : '') || '';
       return `<div class="log-exercise-row" data-exercise="${escapeHtml(name)}">
         <div class="log-exercise-name">${escapeHtml(name)}</div>
-        <input type="number" step="0.5" min="0" inputmode="decimal" placeholder="0" value="${v.weight ? escapeAttr(v.weight) : ''}" oninput="saveCurrentLog()">
-        <input type="number" min="0" inputmode="numeric" placeholder="0" value="${v.reps ? escapeAttr(v.reps) : ''}" oninput="saveCurrentLog()">
+        <div class="log-value-cell">
+          <input type="number" step="0.5" min="0" inputmode="decimal" placeholder="0" value="${weightVal ? escapeAttr(weightVal) : ''}" oninput="saveCurrentLog()">
+          <button type="button" class="lock-btn${lf.weight ? ' locked' : ''}" onclick="toggleFieldLock(this,'weight')" aria-label="무게 고정">${lf.weight ? '🔒' : '🔓'}</button>
+        </div>
+        <div class="log-value-cell">
+          <input type="number" min="0" inputmode="numeric" placeholder="0" value="${repsVal ? escapeAttr(repsVal) : ''}" oninput="saveCurrentLog()">
+          <button type="button" class="lock-btn${lf.reps ? ' locked' : ''}" onclick="toggleFieldLock(this,'reps')" aria-label="횟수 고정">${lf.reps ? '🔒' : '🔓'}</button>
+        </div>
       </div>`;
     }).join('');
     rowsEl.innerHTML = header + rows;
@@ -1701,6 +1746,24 @@ function hideLogCard() {
   document.getElementById('timerFullscreen').classList.remove('has-log');
 }
 
+// 무게/횟수를 고정하면, 이후 세트의 기록 카드를 열 때 마지막 값이 자동으로 채워짐
+function toggleFieldLock(btnEl, field) {
+  const row = btnEl.closest('.log-exercise-row');
+  if (!row) return;
+  const name = row.dataset.exercise;
+  if (!lockedFields[name]) lockedFields[name] = {};
+  const newState = !lockedFields[name][field];
+  lockedFields[name][field] = newState;
+  if (newState) {
+    const inputs = row.querySelectorAll('input');
+    const val = field === 'weight' ? inputs[0].value.trim() : inputs[1].value.trim();
+    if (!lockedValues[name]) lockedValues[name] = {};
+    lockedValues[name][field] = val;
+  }
+  btnEl.classList.toggle('locked', newState);
+  btnEl.textContent = newState ? '🔒' : '🔓';
+}
+
 function saveCurrentLog() {
   if (currentLogSet == null) return;
   const exercises = {};
@@ -1710,6 +1773,14 @@ function saveCurrentLog() {
     const weight = (inputs[0] && inputs[0].value.trim()) || '';
     const reps = (inputs[1] && inputs[1].value.trim()) || '';
     if (weight || reps) exercises[name] = { weight, reps };
+
+    // 고정된 필드는 지금 입력한 값을 다음 세트의 기본값으로 저장해둠
+    const lf = lockedFields[name];
+    if (lf && (lf.weight || lf.reps)) {
+      if (!lockedValues[name]) lockedValues[name] = {};
+      if (lf.weight) lockedValues[name].weight = weight;
+      if (lf.reps) lockedValues[name].reps = reps;
+    }
   });
   const memo = getStr('logMemo');
   const entry = { exercises, memo };
@@ -1796,6 +1867,8 @@ function copyLogSummary() {
 function resetLogState() {
   setLogs = {};
   currentHistoryId = null;
+  lockedFields = {};
+  lockedValues = {};
   hideLogCard();
   document.getElementById('btnFinalLogContinue').style.display = 'none';
   document.getElementById('logSummary').style.display = 'none';
@@ -2120,6 +2193,8 @@ function resumeWorkout(id) {
 
   setLogs = { ...(entry.logs || {}) };
   currentHistoryId = entry.id;
+  lockedFields = {};
+  lockedValues = {};
 
   closeHistoryListIfOpen();
   startTimer(entry.stoppedAtSet && entry.stoppedAtSet > 0 ? entry.stoppedAtSet : 1);
