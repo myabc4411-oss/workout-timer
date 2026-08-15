@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260813-8'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260815-1'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -893,6 +893,157 @@
     color: var(--text-dim);
   }
 
+  /* FULLSCREEN TIMER */
+  body.workout-fullscreen { overflow: hidden; }
+
+  .timer-fullscreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: var(--bg);
+    overflow-y: auto;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    flex-direction: column;
+    gap: 12px;
+  }
+  .timer-fullscreen.show { display: flex; }
+
+  .fs-topbar {
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  .fs-minimize-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-muted);
+    padding: 8px 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fs-minimize-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  .fs-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .timer-fullscreen #timer-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .timer-fullscreen #timer-card .timer-display {
+    font-size: clamp(64px, 24vw, 180px);
+  }
+
+  .timer-fullscreen #timer-card .phase-label {
+    font-size: clamp(24px, 8vw, 44px);
+    text-align: center;
+  }
+
+  .timer-fullscreen #timer-card .timer-wrap { padding: 16px 0; }
+
+  .timer-fullscreen #log-card,
+  .timer-fullscreen #timerControls {
+    flex-shrink: 0;
+  }
+
+  .timer-fullscreen #log-card {
+    max-height: 46vh;
+    overflow-y: auto;
+  }
+
+  /* landscape phones: put timer on one side, log/controls on the other */
+  @media (orientation: landscape) {
+    .fs-body { flex-direction: row; align-items: stretch; }
+    .timer-fullscreen #timer-card { flex: 1.1; }
+    .timer-fullscreen .fs-side {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .timer-fullscreen #log-card { max-height: none; }
+  }
+
+  .fs-restore-btn {
+    display: none;
+    position: fixed;
+    right: 18px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 150;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 28px;
+    padding: 12px 18px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fs-restore-btn.show { display: flex; align-items: center; gap: 6px; }
+
+  /* SOUND SELECT */
+  .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    padding: 10px 12px;
+    outline: none;
+    width: 100%;
+  }
+  .field select:focus { border-color: var(--accent); }
+
+  /* HISTORY EDIT */
+  .hist-edit-set {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hist-edit-set-title {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 700;
+    color: var(--accent2);
+    font-size: 13px;
+  }
+  .hist-edit-set textarea {
+    min-height: 36px;
+  }
+  .hist-actions-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
   /* SECTION DIVIDER */
   .section-divider {
     display: flex;
@@ -914,6 +1065,18 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+
+<!-- FULLSCREEN TIMER (운동 시작 시 timer-card/log-card/timerControls가 이 안으로 옮겨짐) -->
+<div class="timer-fullscreen" id="timerFullscreen">
+  <div class="fs-topbar">
+    <button class="fs-minimize-btn" onclick="handleFsMinimizeClick()">⌄ 최소화<span class="en">Minimize</span></button>
+  </div>
+  <div class="fs-body" id="fsBody">
+    <div class="fs-side" id="fsSide"></div>
+  </div>
+</div>
+
+<button class="fs-restore-btn" id="btnRestoreFullscreen" onclick="enterFullscreenTimer()">⤢ 전체화면으로<span class="en" style="display:none"></span></button>
 
 <header>
   <div class="logo-icon">💪</div>
@@ -1022,6 +1185,7 @@
         <textarea id="logMemo" placeholder="컨디션, 통증, 특이사항 등을 자유롭게 남겨보세요 / Add notes here" oninput="saveCurrentLog()"></textarea>
       </div>
     </div>
+    <button class="btn btn-primary full" id="btnFinalLogContinue" style="display:none" onclick="confirmFinalLog()">✅ 저장하고 계속하기<span class="en">Save &amp; Continue</span></button>
   </div>
 
   <!-- CONTROLS -->
@@ -1032,11 +1196,28 @@
     시작으로 루틴을 시작하고, 일시정지·재시작으로 잠깐 멈췄다 이어가요. 정지는 운동을 중간에 끝내며, 기록이 있으면 저장할지 물어봐요.
     <span class="en">Start begins the routine; Pause/Resume lets you break and continue. Stop ends early — you'll be asked to save any logged data first.</span>
   </div>
-  <div class="controls">
+  <div class="controls" id="timerControls">
     <button class="btn btn-primary" id="btnStart" onclick="startTimer()">▶ 시작<span class="en">Start</span></button>
     <button class="btn btn-secondary" id="btnPause" onclick="pauseTimer()" disabled>⏸ 일시정지<span class="en">Pause</span></button>
     <button class="btn btn-secondary" id="btnResume" onclick="resumeTimer()" disabled>▶ 재시작<span class="en">Resume</span></button>
     <button class="btn btn-danger" id="btnStop" onclick="stopTimer()" disabled>■ 정지<span class="en">Stop</span></button>
+  </div>
+
+  <!-- 타이머 소리 -->
+  <div class="card" style="margin-top:0">
+    <div class="card-title">타이머 소리<span class="en">Timer Sound</span></div>
+    <div class="field-group">
+      <div class="field full">
+        <label>소리 종류 <span class="en">Sound Type</span></label>
+        <select id="soundType" onchange="onSoundTypeChange()">
+          <option value="beep">🔔 기본 비프음 (Default Beep)</option>
+          <option value="bell">🥊 복싱 종 (Boxing Bell)</option>
+          <option value="whistle">📯 휘슬 (Whistle)</option>
+          <option value="chime">🎐 차임벨 (Chime)</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary full" onclick="previewSound()">🔊 미리듣기<span class="en">Preview</span></button>
+    </div>
   </div>
 
   <button class="btn btn-accent2 full" id="btnCopyLog" onclick="copyLogSummary()" style="display:none">📋 운동 기록 복사하기<span class="en">Copy Log</span></button>
@@ -1147,13 +1328,13 @@
       <ul>
         <li><span class="help-kbd">▶ 시작</span> — 설정한 루틴대로 타이머가 시작돼요. 단계가 바뀔 때마다 소리로 알려줘요.<span class="en" style="display:block">Start — begins the timer per your routine, with a sound cue on every phase change.</span></li>
         <li><span class="help-kbd">⏸ 일시정지</span> / <span class="help-kbd">▶ 재시작</span> — 잠깐 멈췄다가 이어서 할 수 있어요.<span class="en" style="display:block">Pause / Resume — pause briefly and pick up where you left off.</span></li>
-        <li><span class="help-kbd">■ 정지</span> — 운동을 중간에 끝내고 초기화해요. 이미 기록한 내용이 있으면 저장할지 먼저 물어봐요.<span class="en" style="display:block">Stop — ends the workout early and resets. If you've already logged data, you'll be asked whether to save it first.</span></li>
+        <li><span class="help-kbd">■ 정지</span> — 운동을 중간에 끝내요. 진행 상황을 저장하면 나중에 "지난 기록 보기"에서 <b>이어하기</b>로 중단했던 세트부터 다시 시작할 수 있어요.<span class="en" style="display:block">Stop — ends the workout early. If you save your progress, you can resume from the interrupted set later via <b>Resume</b> in Workout History.</span></li>
       </ul>
     </div>
 
     <div class="help-section">
       <h3>3. 세트 기록 남기기 <span class="en">Log a set</span></h3>
-      <p>휴식 시간이 되면 방금 끝낸 세트의 기록 카드가 자동으로 떠요. 입력한 운동 종목마다 무게(kg)·횟수를 각각 적고, 아래 세트 메모에 컨디션이나 특이사항을 자유롭게 남기면 돼요. 입력하는 즉시 자동 저장되니 따로 저장 버튼을 누를 필요는 없어요. 마지막 세트는 휴식이 없으니 스트레칭 화면이나 완료 화면에서 기록하면 됩니다.<span class="en" style="display:block;margin-top:4px">When rest starts, the log card for the set you just finished appears automatically. Enter weight(kg)/reps for each exercise, and add any notes below — everything saves as you type, no save button needed. The last set has no rest, so log it from the stretch or finish screen.</span></p>
+      <p>타이머를 시작하면 화면이 꽉 찬 전체화면으로 전환돼요. 세로/가로 어느 방향으로 들어도 자동으로 레이아웃이 맞춰집니다. 휴식 시간이 되면 방금 끝낸 세트의 기록 카드가 자동으로 떠요. 입력한 운동 종목마다 무게(kg)·횟수를 각각 적고, 아래 세트 메모에 컨디션이나 특이사항을 자유롭게 남기면 입력하는 즉시 저장돼요. 마지막 세트는 휴식이 없기 때문에, 운동이 끝나면 타이머가 잠깐 멈추고 기록 카드가 떠요 — 기록을 남기고 <b>✅ 저장하고 계속하기</b>를 누르면 다음 단계로 넘어갑니다. 화면 위쪽의 <b>⌄ 최소화</b>를 누르면 언제든 전체화면을 벗어날 수 있고, 오른쪽 아래 버튼으로 다시 들어갈 수 있어요.<span class="en" style="display:block;margin-top:4px">Starting the timer switches to a fullscreen view that adapts to portrait or landscape automatically. When rest starts, the log card for the set you just finished appears automatically — everything saves as you type. Since the last set has no rest, the timer pauses there and waits for you to log the set and tap <b>Save &amp; Continue</b>. Tap <b>Minimize</b> at the top anytime to step out of fullscreen, and the floating button brings you back in.</span></p>
     </div>
 
     <div class="help-section">
@@ -1163,7 +1344,12 @@
 
     <div class="help-section">
       <h3>5. 지난 기록 히스토리 보기 <span class="en">View workout history</span></h3>
-      <p><b>📖 지난 기록 보기</b>를 누르면 완료(또는 중간에 저장한) 운동 기록이 최신순으로 나와요. 항목을 탭하면 세트별 상세 기록이 펼쳐지고, 날짜를 선택해서 특정 날짜 기록만 찾아볼 수도 있어요. 필요 없는 기록은 ✕ 버튼으로 지울 수 있어요.<span class="en" style="display:block;margin-top:4px">Tap <b>View Past Records</b> to see finished (or manually saved) workouts, newest first. Tap an entry to expand its set-by-set details, or filter by date to find a specific day. Remove records you no longer need with the ✕ button.</span></p>
+      <p><b>📖 지난 기록 보기</b>를 누르면 완료(또는 중간에 저장한) 운동 기록이 최신순으로 나와요. 항목을 탭하면 세트별 상세 기록이 펼쳐지고, 날짜를 선택해서 특정 날짜 기록만 찾아볼 수도 있어요. 필요 없는 기록은 ✕ 버튼으로 지울 수 있어요. 중간에 정지한 기록에는 <b>▶ 이어하기</b> 버튼이 있어서 멈췄던 세트부터 다시 시작할 수 있고, <b>✏️ 수정</b> 버튼으로는 이미 남긴 무게·횟수·메모를 나중에 고칠 수 있어요.<span class="en" style="display:block;margin-top:4px">Tap <b>View Past Records</b> to see finished (or manually saved) workouts, newest first. Tap an entry to expand its set-by-set details, or filter by date to find a specific day. Remove records you no longer need with the ✕ button. A record that was stopped early shows a <b>Resume</b> button to pick up from the interrupted set, and <b>Edit</b> lets you correct weight/reps/notes you already logged.</span></p>
+    </div>
+
+    <div class="help-section">
+      <h3>🔊 타이머 소리 바꾸기 <span class="en">Change the timer sound</span></h3>
+      <p class="muted">타이머 조작 아래 "타이머 소리"에서 기본 비프음 외에 복싱 종·휘슬·차임벨 중 골라 쓸 수 있어요. 미리듣기 버튼으로 소리를 확인해보세요.<span class="en" style="display:block;margin-top:4px">Under Timer Controls, pick from the default beep, boxing bell, whistle, or chime. Use the Preview button to hear it first.</span></p>
     </div>
 
     <div class="help-section">
@@ -1201,8 +1387,12 @@ let setLogs = {}; // { [setNumber]: { weight, reps, memo } }
 let currentLogSet = null;
 let currentHistoryId = null;
 let expandedHistoryId = null;
+let editingHistoryId = null;
 let historyDateFilter = null; // 'YYYY-MM-DD' (local) or null for all
 const HISTORY_KEY = 'wt_history';
+
+// === FULLSCREEN TIMER STATE ===
+let fsOriginalParents = null; // [{el, parent, next}] — 전체화면 진입 전 원래 위치 기억
 
 // === SETTINGS HELPERS ===
 const getVal = id => parseInt(document.getElementById(id).value) || 0;
@@ -1354,6 +1544,7 @@ function showLogCard(setNum, opts) {
   const isFinal = opts && opts.final;
   document.getElementById('logCardTitle').innerHTML = bi(`${setNum}세트 기록${isFinal ? ' (마지막 세트)' : ''}`, `Set ${setNum} Log${isFinal ? ' (Final Set)' : ''}`);
   document.getElementById('log-card').classList.add('show');
+  document.getElementById('btnFinalLogContinue').style.display = (opts && opts.requireSave) ? 'block' : 'none';
 }
 
 function hideLogCard() {
@@ -1457,6 +1648,7 @@ function resetLogState() {
   setLogs = {};
   currentHistoryId = null;
   hideLogCard();
+  document.getElementById('btnFinalLogContinue').style.display = 'none';
   document.getElementById('logSummary').style.display = 'none';
   document.getElementById('btnCopyLog').style.display = 'none';
 }
@@ -1474,16 +1666,83 @@ function hasAnyLog() {
   return Object.keys(setLogs).length > 0;
 }
 
+function getRoutineSettingsSnapshot() {
+  return {
+    exercises: getStr('exerciseList'),
+    warmup: getVal('warmup'),
+    exercise: getVal('exercise'),
+    rest: getVal('rest'),
+    sets: getVal('sets'),
+    stretch: getVal('stretch')
+  };
+}
+
 function createHistoryEntry(opts) {
   if (!hasAnyLog()) return; // nothing logged yet, don't clutter history
   const completed = !opts || opts.completed !== false;
   const list = getHistoryList();
+  const settings = getRoutineSettingsSnapshot();
+
+  // 이어서 하던 기록(resume)이면 새로 만들지 않고 기존 항목을 갱신
+  if (currentHistoryId) {
+    const idx = list.findIndex(e => e.id === currentHistoryId);
+    if (idx !== -1) {
+      list[idx].logs = { ...setLogs };
+      list[idx].completed = completed;
+      list[idx].routineSettings = settings;
+      list[idx].sets = totalSets;
+      if (completed) { delete list[idx].stoppedAtSet; delete list[idx].stoppedPhase; }
+      writeHistoryList(list);
+      if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
+      return;
+    }
+  }
+
   const entry = {
     id: 'h' + Date.now() + Math.random().toString(36).slice(2, 7),
     date: new Date().toISOString(),
     routineName: getStr('routineName') || '이름 없는 루틴',
     sets: totalSets,
     completed,
+    routineSettings: settings,
+    logs: { ...setLogs }
+  };
+  list.unshift(entry);
+  writeHistoryList(list);
+  currentHistoryId = entry.id;
+  if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
+}
+
+// 운동을 중간에 정지할 때 호출 — 기록이 없어도(아직 아무 세트도 못 채웠어도)
+// "이어서 하기"가 가능하도록 현재 진행 상태와 루틴 설정을 항상 저장함
+function saveOrUpdateInterruptedEntry() {
+  const list = getHistoryList();
+  const settings = getRoutineSettingsSnapshot();
+
+  if (currentHistoryId) {
+    const idx = list.findIndex(e => e.id === currentHistoryId);
+    if (idx !== -1) {
+      list[idx].logs = { ...setLogs };
+      list[idx].completed = false;
+      list[idx].stoppedAtSet = currentSet;
+      list[idx].stoppedPhase = currentPhase;
+      list[idx].routineSettings = settings;
+      list[idx].sets = totalSets;
+      writeHistoryList(list);
+      if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
+      return;
+    }
+  }
+
+  const entry = {
+    id: 'h' + Date.now() + Math.random().toString(36).slice(2, 7),
+    date: new Date().toISOString(),
+    routineName: getStr('routineName') || '이름 없는 루틴',
+    sets: totalSets,
+    completed: false,
+    stoppedAtSet: currentSet,
+    stoppedPhase: currentPhase,
+    routineSettings: settings,
     logs: { ...setLogs }
   };
   list.unshift(entry);
@@ -1563,8 +1822,46 @@ function renderHistoryList() {
   el.innerHTML = list.map(entry => {
     const loggedSets = Object.keys(entry.logs || {}).length;
     const isOpen = expandedHistoryId === entry.id;
+    const isEditing = editingHistoryId === entry.id;
+    const canResume = entry.completed === false && !!entry.routineSettings;
     let detail = '';
-    if (isOpen) {
+
+    if (isOpen && isEditing) {
+      const names = getEntryExerciseNames(entry);
+      const setNums = [];
+      for (let i = 1; i <= (entry.sets || 0); i++) setNums.push(i);
+      const setsHtml = setNums.map(setNum => {
+        const d = entry.logs[setNum] || {};
+        const ex = d.exercises || {};
+        const rowsHtml = names.length
+          ? `<div class="log-exercise-header"><span>종목<span class="en" style="display:block">Exercise</span></span><span>무게(kg)<span class="en" style="display:block">Weight(kg)</span></span><span>횟수<span class="en" style="display:block">Reps</span></span></div>`
+          + names.map(name => {
+              const v = ex[name] || {};
+              return `<div class="log-exercise-row" data-exercise="${escapeHtml(name)}">
+                <div class="log-exercise-name">${escapeHtml(name)}</div>
+                <input type="number" step="0.5" min="0" inputmode="decimal" placeholder="0" value="${v.weight ? escapeAttr(v.weight) : ''}">
+                <input type="number" min="0" inputmode="numeric" placeholder="0" value="${v.reps ? escapeAttr(v.reps) : ''}">
+              </div>`;
+            }).join('')
+          : '<div class="log-summary-empty">종목 정보가 없어요 <span class="en">No exercise info</span></div>';
+        return `<div class="hist-edit-set" data-set="${setNum}">
+          <div class="hist-edit-set-title">${setNum}세트<span class="en">Set ${setNum}</span></div>
+          ${rowsHtml}
+          <textarea placeholder="메모 / Notes">${escapeHtml(d.memo || '')}</textarea>
+        </div>`;
+      }).join('');
+      detail = `<div id="editHistBody_${entry.id}" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        <div class="field full">
+          <label>루틴 이름 <span class="en">Routine Name</span></label>
+          <input type="text" id="editHistName_${entry.id}" value="${escapeAttr(entry.routineName)}">
+        </div>
+        ${setsHtml || '<div class="log-summary-empty">기록 없음 <span class="en">No records</span></div>'}
+        <div class="hist-actions-row">
+          <button class="btn btn-primary" onclick="event.stopPropagation();saveEditHistory('${entry.id}')">💾 저장<span class="en">Save</span></button>
+          <button class="btn btn-secondary" onclick="event.stopPropagation();cancelEditHistory()">취소<span class="en">Cancel</span></button>
+        </div>
+      </div>`;
+    } else if (isOpen) {
       const rows = Object.keys(entry.logs || {})
         .map(Number).sort((a, b) => a - b)
         .map(setNum => {
@@ -1578,8 +1875,13 @@ function renderHistoryList() {
             </div>
           </div>`;
         }).join('');
-      detail = `<div class="log-summary" style="display:flex;margin-top:8px">${rows || '<div class="log-summary-empty">기록 없음 <span class="en">No records</span></div>'}</div>`;
+      const actions = `<div class="hist-actions-row">
+        ${canResume ? `<button class="btn btn-primary" onclick="event.stopPropagation();resumeWorkout('${entry.id}')">▶ 이어하기<span class="en">Resume</span></button>` : ''}
+        <button class="btn btn-secondary" onclick="event.stopPropagation();startEditHistory('${entry.id}')">✏️ 수정<span class="en">Edit</span></button>
+      </div>`;
+      detail = `<div class="log-summary" style="display:flex;margin-top:8px">${rows || '<div class="log-summary-empty">기록 없음 <span class="en">No records</span></div>'}</div>${actions}`;
     }
+
     return `<div>
       <div class="routine-slot" onclick="toggleHistoryDetail('${entry.id}')">
         <div class="slot-name">${escapeHtml(entry.routineName)}${entry.completed === false ? ' <span style="color:var(--danger);font-weight:400">· 중단됨<span class="en">Stopped early</span></span>' : ''}</div>
@@ -1592,6 +1894,7 @@ function renderHistoryList() {
 }
 
 function toggleHistoryDetail(id) {
+  if (expandedHistoryId !== id) editingHistoryId = null;
   expandedHistoryId = expandedHistoryId === id ? null : id;
   renderHistoryList();
 }
@@ -1600,7 +1903,98 @@ function deleteHistoryEntry(id) {
   const list = getHistoryList().filter(e => e.id !== id);
   writeHistoryList(list);
   if (expandedHistoryId === id) expandedHistoryId = null;
+  if (editingHistoryId === id) editingHistoryId = null;
   renderHistoryList();
+}
+
+// 기록에 저장된 종목 이름 목록 — routineSettings가 있으면 그걸, 없으면(예전 기록) 로그에 남은 종목 이름으로 유추
+function getEntryExerciseNames(entry) {
+  if (entry.routineSettings && entry.routineSettings.exercises) {
+    return entry.routineSettings.exercises.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  const names = new Set();
+  Object.values(entry.logs || {}).forEach(d => {
+    Object.keys((d && d.exercises) || {}).forEach(n => names.add(n));
+  });
+  return Array.from(names);
+}
+
+// === 중단된 운동 이어서 하기 ===
+function resumeWorkout(id) {
+  if (currentPhase && currentPhase !== 'done') {
+    alert('지금 진행 중인 운동이 있어요. 먼저 정지한 뒤 이어하기를 눌러주세요.\nA workout is already running. Please stop it first.');
+    return;
+  }
+  const entry = getHistoryList().find(e => e.id === id);
+  if (!entry || entry.completed !== false) return;
+  if (!entry.routineSettings) {
+    alert('이 기록에는 이어하기에 필요한 루틴 정보가 없어요. 처음부터 다시 시작해주세요.\nThis record has no saved routine settings, so it can\'t be resumed automatically.');
+    return;
+  }
+  const rs = entry.routineSettings;
+  document.getElementById('routineName').value = entry.routineName;
+  document.getElementById('exerciseList').value = rs.exercises || '';
+  document.getElementById('warmup').value = rs.warmup;
+  document.getElementById('exercise').value = rs.exercise;
+  document.getElementById('rest').value = rs.rest;
+  document.getElementById('sets').value = rs.sets;
+  document.getElementById('stretch').value = rs.stretch;
+  calcTotal();
+
+  setLogs = { ...(entry.logs || {}) };
+  currentHistoryId = entry.id;
+
+  document.getElementById('historyListWrap').style.display = 'none';
+  startTimer(entry.stoppedAtSet && entry.stoppedAtSet > 0 ? entry.stoppedAtSet : 1);
+}
+
+// === 지난 기록 수정 ===
+function startEditHistory(id) {
+  if (currentPhase && currentPhase !== 'done') {
+    alert('운동 중에는 기록을 수정할 수 없어요. 정지한 뒤 시도해주세요.\nCan\'t edit while a workout is running. Please stop it first.');
+    return;
+  }
+  editingHistoryId = id;
+  expandedHistoryId = id;
+  renderHistoryList();
+}
+
+function cancelEditHistory() {
+  editingHistoryId = null;
+  renderHistoryList();
+}
+
+function saveEditHistory(id) {
+  const list = getHistoryList();
+  const idx = list.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  const entry = list[idx];
+
+  const nameInput = document.getElementById('editHistName_' + id);
+  if (nameInput && nameInput.value.trim()) entry.routineName = nameInput.value.trim();
+
+  const newLogs = {};
+  document.querySelectorAll('#editHistBody_' + id + ' .hist-edit-set').forEach(setEl => {
+    const setNum = setEl.dataset.set;
+    const exercises = {};
+    setEl.querySelectorAll('.log-exercise-row').forEach(row => {
+      const name = row.dataset.exercise;
+      const inputs = row.querySelectorAll('input');
+      const weight = (inputs[0] && inputs[0].value.trim()) || '';
+      const reps = (inputs[1] && inputs[1].value.trim()) || '';
+      if (weight || reps) exercises[name] = { weight, reps };
+    });
+    const memoEl = setEl.querySelector('textarea');
+    const memo = memoEl ? memoEl.value.trim() : '';
+    const d = { exercises, memo };
+    if (setHasData(d)) newLogs[setNum] = d;
+  });
+
+  entry.logs = newLogs;
+  writeHistoryList(list);
+  editingHistoryId = null;
+  renderHistoryList();
+  if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
 }
 
 // === BEEP ===
@@ -1622,18 +2016,143 @@ function beep(freq = 880, dur = 0.1, vol = 0.3) {
   } catch(e) {}
 }
 
+function playTone(freq, dur, vol, type) {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = type || 'sine';
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+
+function playSweep(f1, f2, dur, vol) {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(f1, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(f2, audioCtx.currentTime + dur);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+
+function getSoundType() {
+  try { return localStorage.getItem('wt_sound_type') || 'beep'; } catch (e) { return 'beep'; }
+}
+
+function onSoundTypeChange() {
+  const val = document.getElementById('soundType').value;
+  try { localStorage.setItem('wt_sound_type', val); } catch (e) {}
+  previewSound();
+}
+
+function previewSound() {
+  beepPhaseChange();
+}
+
 function beepPhaseChange() {
-  beep(660, 0.15, 0.4);
-  setTimeout(() => beep(880, 0.2, 0.4), 180);
+  const t = getSoundType();
+  if (t === 'bell') {
+    // 복싱 종: 낮은 금속성 톤이 길게 울리다 사라짐 (두 번 타격)
+    playTone(300, 1.2, 0.5, 'triangle');
+    playTone(600, 1.0, 0.2, 'triangle');
+    setTimeout(() => {
+      playTone(300, 0.9, 0.35, 'triangle');
+      playTone(600, 0.7, 0.15, 'triangle');
+    }, 160);
+  } else if (t === 'whistle') {
+    // 스포츠 휘슬: 높은 음이 살짝 흔들리며 두 번
+    playSweep(1400, 2200, 0.3, 0.4);
+    setTimeout(() => playSweep(1400, 2200, 0.3, 0.4), 380);
+  } else if (t === 'chime') {
+    // 부드러운 차임벨: 두 음이 상승
+    playTone(523.25, 0.35, 0.35, 'sine');
+    setTimeout(() => playTone(783.99, 0.45, 0.35, 'sine'), 150);
+  } else {
+    beep(660, 0.15, 0.4);
+    setTimeout(() => beep(880, 0.2, 0.4), 180);
+  }
 }
 
 function beepCountdown() {
-  beep(440, 0.08, 0.2);
+  const t = getSoundType();
+  if (t === 'bell') playTone(500, 0.08, 0.25, 'triangle');
+  else if (t === 'whistle') playTone(1800, 0.06, 0.2, 'square');
+  else if (t === 'chime') playTone(659.25, 0.08, 0.2, 'sine');
+  else beep(440, 0.08, 0.2);
 }
 
 function beepDone() {
-  [0, 200, 400].forEach(d => setTimeout(() => beep(880, 0.15, 0.5), d));
-  setTimeout(() => beep(1100, 0.4, 0.5), 700);
+  const t = getSoundType();
+  if (t === 'bell') {
+    [0, 250, 500].forEach(d => setTimeout(() => {
+      playTone(300, 1.0, 0.5, 'triangle');
+      playTone(600, 0.8, 0.2, 'triangle');
+    }, d));
+  } else if (t === 'whistle') {
+    [0, 300, 600].forEach(d => setTimeout(() => playSweep(1400, 2400, 0.3, 0.45), d));
+  } else if (t === 'chime') {
+    [0, 200, 400].forEach((d, i) => setTimeout(() => playTone([523.25, 659.25, 783.99][i], 0.4, 0.4, 'sine'), d));
+  } else {
+    [0, 200, 400].forEach(d => setTimeout(() => beep(880, 0.15, 0.5), d));
+    setTimeout(() => beep(1100, 0.4, 0.5), 700);
+  }
+}
+
+// === FULLSCREEN TIMER ===
+// 운동 중에는 timer-card / log-card / timerControls를 화면 전체를 채우는
+// 전용 레이어(#timerFullscreen)로 옮겨서 보여주고, 최소화하거나 정지하면
+// 원래 있던 자리로 정확히 되돌려놓습니다. (id/이벤트가 그대로라 로직 변경 없이 재사용됨)
+function enterFullscreenTimer() {
+  if (fsOriginalParents) return; // 이미 전체화면 상태
+  const timerCard = document.getElementById('timer-card');
+  const logCard = document.getElementById('log-card');
+  const controls = document.getElementById('timerControls');
+  const copyBtn = document.getElementById('btnCopyLog');
+  const fsBody = document.getElementById('fsBody');
+  const fsSide = document.getElementById('fsSide');
+
+  fsOriginalParents = [timerCard, logCard, controls, copyBtn].map(el => ({
+    el, parent: el.parentNode, next: el.nextSibling
+  }));
+
+  fsBody.insertBefore(timerCard, fsSide);
+  fsSide.appendChild(logCard);
+  fsSide.appendChild(controls);
+  fsSide.appendChild(copyBtn);
+
+  document.getElementById('timerFullscreen').classList.add('show');
+  document.body.classList.add('workout-fullscreen');
+  document.getElementById('btnRestoreFullscreen').classList.remove('show');
+}
+
+function exitFullscreenTimer(showRestore) {
+  if (!fsOriginalParents) return;
+  fsOriginalParents.forEach(o => {
+    if (o.next && o.next.parentNode === o.parent) o.parent.insertBefore(o.el, o.next);
+    else o.parent.appendChild(o.el);
+  });
+  fsOriginalParents = null;
+  document.getElementById('timerFullscreen').classList.remove('show');
+  document.body.classList.remove('workout-fullscreen');
+  document.getElementById('btnRestoreFullscreen').classList.toggle('show', !!showRestore);
+}
+
+function handleFsMinimizeClick() {
+  exitFullscreenTimer(!!(currentPhase && currentPhase !== 'done'));
 }
 
 // === TIMER LOGIC ===
@@ -1658,16 +2177,30 @@ function buildQueue() {
   return q;
 }
 
-function startTimer() {
+function startTimer(resumeFromSet) {
   phaseQueue = buildQueue();
   queueIndex = 0;
-  currentSet = 1;
 
+  if (resumeFromSet) {
+    const idx = phaseQueue.findIndex(it => it.phase === 'exercise' && it.set === resumeFromSet);
+    if (idx !== -1) queueIndex = idx;
+  }
   if (phaseQueue.length === 0) return;
+  currentSet = phaseQueue[queueIndex].set;
 
-  resetLogState();
+  if (resumeFromSet) {
+    // 이어하기: setLogs/currentHistoryId는 resumeWorkout()에서 이미 채워져 있으므로 유지
+    hideLogCard();
+    document.getElementById('btnFinalLogContinue').style.display = 'none';
+    document.getElementById('logSummary').style.display = 'none';
+    document.getElementById('btnCopyLog').style.display = 'none';
+  } else {
+    resetLogState();
+  }
+
+  enterFullscreenTimer();
   btnState(true);
-  runPhase(phaseQueue[0]);
+  runPhase(phaseQueue[queueIndex]);
 }
 
 function runPhase(item) {
@@ -1691,6 +2224,11 @@ function runPhase(item) {
 
     if (remaining <= 0) {
       clearInterval(timer);
+      const isLastExercise = item.phase === 'exercise' && item.set === totalSets;
+      if (isLastExercise) {
+        pauseForFinalLog(item);
+        return;
+      }
       queueIndex++;
       if (queueIndex < phaseQueue.length) {
         runPhase(phaseQueue[queueIndex]);
@@ -1699,6 +2237,26 @@ function runPhase(item) {
       }
     }
   }, 1000);
+}
+
+// 마지막 세트는 휴식이 없어서 카운트다운이 기록을 남길 시간을 대신 주지 못하므로,
+// 여기서 잠깐 멈추고 "저장하고 계속하기"를 누를 때까지 기다립니다.
+function pauseForFinalLog(item) {
+  beepPhaseChange();
+  showLogCard(item.set, { final: true, requireSave: true });
+  document.getElementById('setBadge').innerHTML = bi(`${item.set} / ${totalSets} 세트 완료`, `Set ${item.set}/${totalSets} done`);
+  document.getElementById('nextPhase').innerHTML = bi('기록을 남기고 저장을 눌러주세요', 'Log your set, then tap Save to continue');
+}
+
+function confirmFinalLog() {
+  saveCurrentLog();
+  document.getElementById('btnFinalLogContinue').style.display = 'none';
+  queueIndex++;
+  if (queueIndex < phaseQueue.length) {
+    runPhase(phaseQueue[queueIndex]);
+  } else {
+    endWorkout();
+  }
 }
 
 function endWorkout() {
@@ -1730,10 +2288,11 @@ function resumeTimer() {
 }
 
 function stopTimer() {
-  if (currentPhase && currentPhase !== 'done' && hasAnyLog()) {
-    const wantsSave = confirm('운동을 중간에 정지합니다.\n지금까지 기록한 세트 기록을 저장하시겠습니까?\n\nStopping your workout early. Save the sets logged so far?');
-    if (wantsSave) createHistoryEntry({ completed: false });
+  if (currentPhase && currentPhase !== 'done') {
+    const wantsSave = confirm('운동을 중간에 정지합니다.\n지금까지의 진행 상황을 저장해서 나중에 이어서 할 수 있게 할까요?\n\nStopping your workout early. Save progress so you can resume it later?');
+    if (wantsSave) saveOrUpdateInterruptedEntry();
   }
+  exitFullscreenTimer(false);
   clearInterval(timer);
   isPaused = false;
   currentPhase = null;
@@ -2146,6 +2705,7 @@ applyThemeUI(document.documentElement.getAttribute('data-theme') === 'light' ? '
 
 // Init
 calcTotal();
+try { document.getElementById('soundType').value = getSoundType(); } catch (e) {}
 </script>
 </body>
 </html>
