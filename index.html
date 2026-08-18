@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260815-8'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260815-9'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -1543,6 +1543,7 @@ const HISTORY_KEY = 'wt_history';
 
 // === FULLSCREEN TIMER STATE ===
 let fsOriginalParents = null; // [{el, parent, next}] — 전체화면 진입 전 원래 위치 기억
+let wakeLock = null; // 운동 중 화면이 자동으로 꺼지지 않게 잡아두는 잠금
 let fsControlsHideTimer = null;
 
 // === 뒤로가기(안드로이드 back) 통합 처리 ===
@@ -2418,6 +2419,32 @@ function beepDone() {
 // 운동 중에는 timer-card / log-card / timerControls를 화면 전체를 채우는
 // 전용 레이어(#timerFullscreen)로 옮겨서 보여주고, 최소화하거나 정지하면
 // 원래 있던 자리로 정확히 되돌려놓습니다. (id/이벤트가 그대로라 로직 변경 없이 재사용됨)
+// === 화면 꺼짐 방지 (운동 중에는 폰이 알아서 화면을 끄지 않도록) ===
+// 지원하지 않는 브라우저도 있고, 브라우저가 탭이 백그라운드로 가면 자동으로 풀어버리기도 해서
+// 실패해도 조용히 무시하고(타이머 자체는 정상 동작), 다시 화면을 볼 때 재요청함
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch (e) {
+    wakeLock = null;
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    try { wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+}
+
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible' && !wakeLock && document.body.classList.contains('workout-fullscreen')) {
+    requestWakeLock();
+  }
+});
+
 function enterFullscreenTimer() {
   if (fsOriginalParents) return; // 이미 전체화면 상태
   const timerCard = document.getElementById('timer-card');
@@ -2441,6 +2468,7 @@ function enterFullscreenTimer() {
   document.body.classList.add('workout-fullscreen');
   document.getElementById('btnRestoreFullscreen').classList.remove('show');
   showFsControls(false);
+  requestWakeLock();
 
   // 갤럭시 등 안드로이드에서 뒤로가기(제스처/버튼)를 눌렀을 때 앱이 통째로 꺼지지 않고
   // 전체화면 타이머만 빠져나가도록 스택에 등록
@@ -2466,6 +2494,7 @@ function restoreFsDom(showRestore) {
   document.body.classList.remove('workout-fullscreen');
   document.getElementById('btnRestoreFullscreen').classList.toggle('show', !!showRestore);
   clearTimeout(fsControlsHideTimer);
+  releaseWakeLock();
 }
 
 function handleFsMinimizeClick() {
