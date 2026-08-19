@@ -2,7 +2,7 @@
 // 인터넷이 없어도 앱이 즉시 열리도록 파일을 폰에 캐싱해둡니다.
 // 배포할 때마다 index.html의 APP_BUILD, version.json의 build와 함께
 // 아래 CACHE_VERSION도 같이 올려주세요 (그래야 새 버전이 확실히 적용됩니다).
-const CACHE_VERSION = '20260815-10';
+const CACHE_VERSION = '20260815-11';
 const CACHE_NAME = 'wt-cache-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
@@ -17,9 +17,18 @@ const PRECACHE_URLS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .catch(() => {}) // 아이콘 경로가 다르거나 없어도 설치 자체는 계속 진행
+    caches.open(CACHE_NAME).then((cache) => {
+      // cache.addAll은 파일 하나라도 실패하면 전체가 통째로 실패하는 방식이라,
+      // 아이콘 경로 하나가 안 맞아도 index.html 등 핵심 파일까지 못 받는 사고가 생겼음.
+      // 파일별로 따로 시도해서, 실패한 파일만 건너뛰고 나머지는 확실히 캐싱되도록 함.
+      return Promise.all(
+        PRECACHE_URLS.map((url) =>
+          fetch(url)
+            .then((res) => { if (res && res.ok) return cache.put(url, res); })
+            .catch(() => {})
+        )
+      );
+    })
   );
   self.skipWaiting();
 });
