@@ -10,7 +10,7 @@
 // 매번 켤 때(그리고 다시 포그라운드로 돌아올 때)마다 GitHub에 올라간 최신 버전인지 확인하고,
 // 다르면 캐시를 건너뛰고 새 버전을 강제로 불러옵니다.
 (function () {
-  var APP_BUILD = '20260815-13'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
+  var APP_BUILD = '20260815-15'; // 이 페이지 자체의 빌드 번호. 배포할 때마다 version.json과 함께 올립니다.
 
   function checkForUpdate() {
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
@@ -1426,7 +1426,33 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div class="controls">
-    <button class="btn btn-secondary full" onclick="toggleHistoryList()">📖 지난 기록 보기<span class="en">View Past Records</span></button>
+    <button class="btn btn-secondary" onclick="toggleHistoryList()">📖 지난 기록 보기<span class="en">View Past Records</span></button>
+    <button class="btn btn-secondary" onclick="toggleImportPanel()">📥 텍스트로 가져오기<span class="en">Import from Text</span></button>
+  </div>
+
+  <div id="importWrap" style="display:none">
+    <div class="card" style="margin-top:0">
+      <div class="card-title">텍스트로 기록 가져오기<span class="en">Import from Text</span></div>
+      <div class="block-help-box show" style="margin-bottom:10px">
+        날짜(예: 8/10 또는 2026.8.10) 한 줄 → 종목 이름 한 줄 → 세트별 숫자(쉼표 구분) 한 줄, 이 순서로 원하는 만큼 이어서 붙여넣으면 여러 날 기록을 한 번에 넣을 수 있어요. 날짜 줄이 없으면 오늘 날짜로 들어가요. 무게 없이 횟수만 있으면 숫자만, 무게도 남기려면 <b>무게x횟수</b>(예: 20x10)로 적으면 돼요.
+        <br><br>예시:<br>
+        8/10<br>풀업<br>10, 11, 6, 7, 5<br>딥스<br>10, 10, 10, 10, 10<br><br>
+        8/12<br>풀업<br>11, 12, 7, 8, 6
+        <span class="en">One line for the date (e.g. 8/10), then exercise name, then comma-separated per-set numbers — repeat for as many days as you like. No date line = today. Plain numbers are reps; use weightxreps (e.g. 20x10) to include weight.</span>
+      </div>
+      <div class="field full" style="margin-bottom:10px">
+        <label>루틴 이름 (선택) <span class="en">Routine Name (optional)</span></label>
+        <input type="text" id="importRoutineName" placeholder="비워두면 종목 이름으로 자동 설정" autocomplete="off">
+      </div>
+      <div class="field full" style="margin-bottom:10px">
+        <label>기록 붙여넣기 <span class="en">Paste your records</span></label>
+        <textarea id="importText" style="min-height:120px" placeholder="풀업&#10;10, 11, 6, 7, 5&#10;딥스&#10;10, 10, 10, 10, 10"></textarea>
+      </div>
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runTextImport()">가져오기<span class="en">Import</span></button>
+        <button class="btn btn-secondary" onclick="toggleImportPanel()">취소<span class="en">Cancel</span></button>
+      </div>
+    </div>
   </div>
 
   <div id="historyListWrap" style="display:none">
@@ -2006,9 +2032,7 @@ function toggleHistoryList() {
   const wrap = document.getElementById('historyListWrap');
   const isHidden = wrap.style.display === 'none' || !wrap.style.display;
   if (isHidden) {
-    wrap.style.display = 'block';
-    renderHistoryList();
-    wtPushBack('historyList', closeHistoryListUI);
+    openHistoryList();
   } else {
     if (editingHistoryId) { editingHistoryId = null; wtDismiss('historyEdit'); }
     closeHistoryListUI();
@@ -2016,10 +2040,171 @@ function toggleHistoryList() {
   }
 }
 
+function openHistoryList() {
+  const wrap = document.getElementById('historyListWrap');
+  wrap.style.display = 'block';
+  renderHistoryList();
+  wtPushBack('historyList', closeHistoryListUI);
+}
+
 function closeHistoryListUI() {
   document.getElementById('historyListWrap').style.display = 'none';
   expandedHistoryId = null;
   editingHistoryId = null;
+}
+
+// === 텍스트로 기록 가져오기 ===
+// "종목 이름" 한 줄 + 그 아래 "세트별 숫자(쉼표 구분)" 한 줄 형식을 인식해서
+// 지난 기록 히스토리에 그대로 추가해줍니다. 무게 없이 숫자만 있으면 횟수로,
+// "무게x횟수"(예: 20x10) 형식이면 무게+횟수로 인식합니다.
+function toggleImportPanel() {
+  const wrap = document.getElementById('importWrap');
+  const isHidden = wrap.style.display === 'none' || !wrap.style.display;
+  if (isHidden) {
+    wrap.style.display = 'block';
+    wtPushBack('importPanel', closeImportPanelUI);
+  } else {
+    closeImportPanelUI();
+    wtDismiss('importPanel');
+  }
+}
+
+function closeImportPanelUI() {
+  document.getElementById('importWrap').style.display = 'none';
+}
+
+function parseImportText(text) {
+  const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+
+  const isNumberLine = (line) => {
+    const tokens = line.split(',').map(t => t.trim()).filter(Boolean);
+    if (tokens.length === 0) return false;
+    return tokens.every(t => /^\d+(?:\.\d+)?\s*(?:kg)?\s*(?:[xX×\/]\s*\d+(?:\.\d+)?)?\s*(?:kg|회)?$/.test(t));
+  };
+
+  // 날짜로 보이는 줄이면 Date 객체를, 아니면 null을 반환 (연도 없으면 올해로 가정)
+  const parseDateLine = (line) => {
+    let m = line.match(/^(\d{4})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*일?\s*\.?$/);
+    if (m) {
+      const d = new Date(+m[1], +m[2] - 1, +m[3]);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    m = line.match(/^(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*일?\s*\.?$/);
+    if (m) {
+      const now = new Date();
+      const d = new Date(now.getFullYear(), +m[1] - 1, +m[2]);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  };
+
+  const sessions = []; // [{ date: Date, exercises: [{name, sets:[{weight,reps}]}] }]
+  let session = null;
+  let current = null; // 현재 세션 안에서 기록 중인 종목
+
+  rawLines.forEach((line) => {
+    const asDate = parseDateLine(line);
+    if (asDate) {
+      session = { date: asDate, exercises: [] };
+      sessions.push(session);
+      current = null;
+      return;
+    }
+    if (!session) {
+      session = { date: new Date(), exercises: [] }; // 날짜 줄 없이 시작하면 오늘 날짜로
+      sessions.push(session);
+    }
+    if (isNumberLine(line) && current) {
+      const tokens = line.split(',').map(t => t.trim()).filter(Boolean);
+      tokens.forEach((t) => {
+        const clean = t.replace(/kg|회/gi, '').trim();
+        const m = clean.match(/^(\d+(?:\.\d+)?)\s*[xX×\/]\s*(\d+(?:\.\d+)?)$/);
+        if (m) current.sets.push({ weight: m[1], reps: m[2] });
+        else current.sets.push({ weight: '', reps: clean });
+      });
+    } else {
+      current = { name: line, sets: [] };
+      session.exercises.push(current);
+    }
+  });
+
+  const result = sessions.map((s) => {
+    const totalSets = s.exercises.reduce((max, ex) => Math.max(max, ex.sets.length), 0);
+    if (s.exercises.length === 0 || totalSets === 0) return null;
+    const logs = {};
+    for (let i = 1; i <= totalSets; i++) {
+      const exObj = {};
+      s.exercises.forEach((ex) => {
+        const v = ex.sets[i - 1];
+        if (v && (v.weight || v.reps)) exObj[ex.name] = { weight: v.weight, reps: v.reps };
+      });
+      if (Object.keys(exObj).length > 0) logs[i] = { exercises: exObj, memo: '' };
+    }
+    return { date: s.date, exerciseNames: s.exercises.map((e) => e.name), sets: totalSets, logs };
+  }).filter(Boolean);
+
+  return result.length ? result : null;
+}
+
+function runTextImport() {
+  const text = document.getElementById('importText').value;
+  const sessions = parseImportText(text);
+  if (!sessions) {
+    alert('기록을 인식하지 못했어요. 종목 이름 한 줄, 그 아래 세트별 숫자를 쉼표로 구분한 줄 형식으로 입력해주세요.\n\n예)\n8/10\n풀업\n10, 11, 6, 7, 5\n\nCouldn\'t recognize the format. Write an exercise name, then its per-set numbers on the next line.');
+    return;
+  }
+
+  const previewLines = sessions.slice(0, 15).map((s) => {
+    const dateStr = `${s.date.getFullYear()}.${String(s.date.getMonth() + 1).padStart(2, '0')}.${String(s.date.getDate()).padStart(2, '0')}`;
+    const exList = s.exerciseNames.map((name) => {
+      const cnt = Object.values(s.logs).filter((l) => l.exercises[name]).length;
+      return `${name}(${cnt}세트)`;
+    }).join(', ');
+    return `· ${dateStr} — ${exList}`;
+  });
+  if (sessions.length > 15) previewLines.push(`...외 ${sessions.length - 15}일 더`);
+
+  const ok = confirm(`총 ${sessions.length}일치 기록으로 인식했어요. 이대로 추가할까요?\n\n${previewLines.join('\n')}\n\nDetected ${sessions.length} day(s) as above — add these to your history?`);
+  if (!ok) return;
+
+  const nameInput = document.getElementById('importRoutineName');
+  const customName = nameInput && nameInput.value.trim();
+
+  const list = getHistoryList();
+  sessions.forEach((s, idx) => {
+    const routineName = customName || s.exerciseNames.join(' ');
+    list.unshift({
+      id: 'h' + Date.now() + '_' + idx + Math.random().toString(36).slice(2, 6),
+      date: s.date.toISOString(),
+      routineName,
+      sets: s.sets,
+      completed: true,
+      routineSettings: {
+        exercises: s.exerciseNames.join(', '),
+        warmup: 0,
+        exercise: 0,
+        rest: 0,
+        sets: s.sets,
+        stretch: 0
+      },
+      logs: s.logs
+    });
+  });
+  writeHistoryList(list);
+  if (typeof gDriveAccessToken !== 'undefined' && gDriveAccessToken) driveBackup(false);
+
+  document.getElementById('importText').value = '';
+  if (nameInput) nameInput.value = '';
+  closeImportPanelUI();
+  wtDismiss('importPanel');
+
+  const historyWrap = document.getElementById('historyListWrap');
+  if (historyWrap.style.display === 'none' || !historyWrap.style.display) {
+    openHistoryList();
+  } else {
+    renderHistoryList();
+  }
+  alert(`기록 ${sessions.length}개를 추가했어요!\n${sessions.length} record(s) added!`);
 }
 
 // 다른 동작(예: 이어하기)으로 인해 프로그램적으로 목록을 닫아야 할 때 사용
