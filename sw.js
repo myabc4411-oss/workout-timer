@@ -2,7 +2,7 @@
 // 인터넷이 없어도 앱이 즉시 열리도록 파일을 폰에 캐싱해둡니다.
 // 배포할 때마다 index.html의 APP_BUILD, version.json의 build와 함께
 // 아래 CACHE_VERSION도 같이 올려주세요 (그래야 새 버전이 확실히 적용됩니다).
-const CACHE_VERSION = '20260815-15';
+const CACHE_VERSION = '20260815-16';
 const CACHE_NAME = 'wt-cache-' + CACHE_VERSION;
 
 const PRECACHE_URLS = [
